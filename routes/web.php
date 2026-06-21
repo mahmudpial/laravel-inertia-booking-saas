@@ -34,7 +34,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/admin/bookings/{id}/status', [BookingController::class, 'updateStatus'])->name('admin.bookings.update-status');
 });
 
-Route::get('/book', [BookingController::class, 'showBookingPage'])->name('booking.page');
+Route::get('/b/{slug}', [BookingController::class, 'showBookingPage'])->name('booking.page');
 Route::get('/api/available-slots', [BookingController::class, 'getAvailableSlots'])->name('api.slots');
 Route::post('/book', [BookingController::class, 'store'])->name('booking.store');
 

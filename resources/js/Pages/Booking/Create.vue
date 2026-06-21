@@ -1,10 +1,9 @@
 <script setup>
 import { ref, watch } from 'vue';
-import { Head } from '@inertiajs/vue3';
-import { useForm } from '@inertiajs/vue3';
+import { Head, useForm } from '@inertiajs/vue3';
 import axios from 'axios';
 
-defineProps({
+const props = defineProps({
     business: Object,
     services: Array
 });
@@ -15,7 +14,7 @@ const slots = ref([]);
 const selectedTime = ref('');
 const loading = ref(false);
 
-// যখনই সার্ভিস অথবা ডেট চেঞ্জ হবে, আমরা এক্সিওস (Axios) দিয়ে ব্যাকএন্ড থেকে স্লট নিয়ে আসব
+// এক্সিওস (Axios) দিয়ে ব্যাকএন্ড থেকে স্লট নিয়ে আসা
 const fetchSlots = async () => {
     if (!selectedService.value || !selectedDate.value) return;
 
@@ -26,46 +25,59 @@ const fetchSlots = async () => {
     try {
         const response = await axios.get(route('api.slots'), {
             params: {
+                business_id: props.business.id,
                 service_id: selectedService.value,
                 date: selectedDate.value
             }
         });
         slots.value = response.data;
     } catch (error) {
-        console.error("Slots fetch করতে সমস্যা হয়েছে:", error);
+        console.error("Slots fetch করতে সমস্যা হয়েছে:", error);
     } finally {
         loading.value = false;
     }
 };
 
-// ওয়াচার (Watcher) দিয়ে ইনপুট ট্র্যাক করা
+// ওয়াচার দিয়ে ইনপুট ট্র্যাক করা
 watch([selectedService, selectedDate], fetchSlots);
 
-// বুকিং ফর্ম রেডি করা
+// [FIX] বুকিং ফর্ম ডিক্লেয়ারেশনেই business_id সহ সব ফিল্ড ডিফাইন করা হলো
 const bookingForm = useForm({
+    business_id: props.business.id,
     service_id: '',
     booking_date: '',
     start_time: '',
     notes: ''
 });
 
-// কাস্টমার যখন বাটনে ক্লিক করবে
+// কাস্টমার যখন বুকিং কনফার্ম বাটনে ক্লিক করবে
 const confirmBooking = () => {
+    // সাবমিট করার আগে রিয়েল-টাইম সিলেক্টেড ভ্যালুগুলো ফর্মে অ্যাসাইন করা
+    bookingForm.business_id = props.business.id;
     bookingForm.service_id = selectedService.value;
     bookingForm.booking_date = selectedDate.value;
     bookingForm.start_time = selectedTime.value;
 
     bookingForm.post(route('booking.store'), {
+        preserveScroll: true,
         onSuccess: () => {
             alert('🎉 Appointment Booked Successfully!');
-            // ফর্ম এবং স্লট রিসেট করা
+            // ফর্ম এবং সমস্ত স্টেট রিসেট করা
             slots.value = [];
             selectedTime.value = '';
             selectedDate.value = '';
             selectedService.value = '';
+            bookingForm.reset();
         },
         onError: (errors) => {
-            alert(errors.time || 'Something went wrong!');
+            // [FIX] সুনির্দিষ্ট লারাভেল এরর মেসেজ অ্যালার্টে ফুটিয়ে তোলার লজিক
+            if (errors.time) {
+                alert(errors.time);
+            } else {
+                // লারাভেলের অন্য যেকোনো ভ্যালিডেশন এরর মেসেজ স্ট্রিং আকারে দেখাবে
+                const errorMessages = Object.values(errors).join('\n');
+                alert(errorMessages || 'Something went wrong! Please check the console.');
+            }
         }
     });
 };
@@ -81,6 +93,7 @@ const confirmBooking = () => {
             <p class="text-sm text-center text-gray-500 mb-6">Choose your service and preferred time slot</p>
 
             <div class="space-y-6">
+                <!-- ১. সার্ভিস সিলেক্ট ড্রপডাউন -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Select Service</label>
                     <select v-model="selectedService"
@@ -92,12 +105,14 @@ const confirmBooking = () => {
                     </select>
                 </div>
 
+                <!-- ২. ডেট পিকার -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Select Date</label>
                     <input v-model="selectedDate" type="date" :min="new Date().toISOString().split('T')[0]"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                 </div>
 
+                <!-- ৩. টাইম স্লটস সেকশন -->
                 <div v-if="selectedService && selectedDate">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Available Slots</label>
 
@@ -120,9 +135,8 @@ const confirmBooking = () => {
                     </div>
                 </div>
 
-                <!-- ৪. বুকিং কনফার্ম বাটন -->
+                <!-- ৪. স্পেশাল ইন্সট্রাকশন এবং কনফার্ম বাটন -->
                 <div v-if="selectedTime" class="pt-4">
-                    <!-- কাস্টমারের জন্য একটি অপশনাল নোট বক্স -->
                     <textarea v-model="bookingForm.notes" placeholder="Any special instructions? (Optional)"
                         class="mb-3 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                         rows="2"></textarea>

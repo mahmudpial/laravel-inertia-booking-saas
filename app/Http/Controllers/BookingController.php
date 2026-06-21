@@ -12,18 +12,21 @@ use Inertia\Inertia;
 
 class BookingController extends Controller
 {
-    public function showBookingPage()
+    // ইউআরএল থেকে $slug রিসিভ করা
+    public function showBookingPage($slug)
     {
-        $business = Business::with('services')->findOrFail(1);
+        // স্লগ অনুযায়ী ব্যবসা খুঁজে বের করা, না পেলে ৪0৪ এরর দেবে
+        $business = Business::with('services')->where('slug', $slug)->firstOrFail();
+
         return Inertia::render('Booking/Create', [
             'business' => $business,
             'services' => $business->services
         ]);
     }
-
     public function getAvailableSlots(Request $request)
     {
         $request->validate([
+            'business_id' => 'required|exists:businesses,id', // ফ্রন্টএন্ড থেকে বিজনেস আইডি আসবে
             'date' => 'required|date|after_or_equal:today',
             'service_id' => 'required|exists:services,id',
         ]);
@@ -31,7 +34,8 @@ class BookingController extends Controller
         $date = Carbon::parse($request->date);
         $dayOfWeek = $date->dayOfWeek;
 
-        $availability = Availability::where('business_id', 1)
+        // ফিক্সড ১ এর বদলে রিকোয়েস্ট থেকে আসা বিজনেস আইডি ব্যবহার করা
+        $availability = Availability::where('business_id', $request->business_id)
             ->where('day_of_week', $dayOfWeek)
             ->first();
 
@@ -45,8 +49,7 @@ class BookingController extends Controller
         $startTime = Carbon::parse($request->date . ' ' . $availability->start_time);
         $endTime = Carbon::parse($request->date . ' ' . $availability->end_time);
 
-        // 🔥 নতুন সংযোজন: ওই নির্দিষ্ট ডেটে অলরেডি যে বুকিংগুলো আছে তা ডাটাবেস থেকে নেওয়া
-        $existingBookings = Booking::where('business_id', 1)
+        $existingBookings = Booking::where('business_id', $request->business_id)
             ->where('booking_date', $request->date)
             ->where('status', '!=', 'canceled')
             ->get(['start_time', 'end_time']);
@@ -57,14 +60,11 @@ class BookingController extends Controller
             $slotStartTime = $startTime->format('H:i:s');
             $slotEndTime = $startTime->copy()->addMinutes($duration)->format('H:i:s');
 
-            // 🔥 লজিক: এই স্লটটি কি অলরেডি বুকড কোনো সময়ের ভেতরে পড়ছে?
             $isBooked = $existingBookings->contains(function ($booking) use ($slotStartTime, $slotEndTime) {
-                // বুকিংয়ের সময়ের সাথে ওভারল্যাপ চেক করা
                 return ($slotStartTime >= $booking->start_time && $slotStartTime < $booking->end_time) ||
                     ($slotEndTime > $booking->start_time && $slotEndTime <= $booking->end_time);
             });
 
-            // যদি বুকড না হয়ে থাকে, কেবল তখনই কাস্টমারকে স্লটটি দেখানো হবে
             if (!$isBooked) {
                 $slots[] = [
                     'time' => $slotStartTime,
@@ -79,9 +79,11 @@ class BookingController extends Controller
     }
 
     // 🔥 নতুন মেথড: বুকিং ডাটাবেসে সেভ করা
+    // বুকিং স্টোর করার মেথড আপডেট
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'business_id' => 'required|exists:businesses,id', // নতুন সংযোজন
             'service_id' => 'required|exists:services,id',
             'booking_date' => 'required|date|after_or_equal:today',
             'start_time' => 'required',
@@ -89,13 +91,10 @@ class BookingController extends Controller
         ]);
 
         $service = Service::findOrFail($validated['service_id']);
-
-        // এন্ড টাইম ক্যালকুলেট করা (স্টার্ট টাইমের সাথে সার্ভিসের ডিউরেশন যোগ করে)
         $startTime = Carbon::parse($validated['booking_date'] . ' ' . $validated['start_time']);
         $endTime = $startTime->copy()->addMinutes($service->duration_minutes);
 
-        // ডাবল বুকিং প্রিভেন্ট করার জন্য শেষবারের মতো ব্যাকএন্ড ভ্যালিডেশন
-        $conflict = Booking::where('business_id', 1)
+        $conflict = Booking::where('business_id', $validated['business_id'])
             ->where('booking_date', $validated['booking_date'])
             ->where('status', '!=', 'canceled')
             ->where(function ($query) use ($validated, $endTime) {
@@ -112,47 +111,39 @@ class BookingController extends Controller
             return redirect()->back()->withErrors(['time' => 'This slot has just been booked by someone else!']);
         }
 
-        // বুকিং ক্রিয়েট করা (সাময়িকভাবে user_id = 1 ধরে নিচ্ছি, পরে এটি auth()->id() হবে)
         Booking::create([
-            'business_id' => 1,
-            'user_id' => 1,
+            'business_id' => $validated['business_id'],
+            'user_id' => auth()->id() ?? 1, // লগইন করা ইউজার থাকলে তার আইডি, না থাকলে ডিফল্ট ১
             'service_id' => $validated['service_id'],
             'booking_date' => $validated['booking_date'],
             'start_time' => $validated['start_time'],
             'end_time' => $endTime->format('H:i:s'),
-            'status' => 'confirmed', // অটো-কনফার্ম করে দিচ্ছি আপাতত
+            'status' => 'pending',
             'notes' => $validated['notes'],
         ]);
 
         return redirect()->back()->with('message', 'Appointment booked successfully!');
     }
 
-
-    // অ্যাডমিন প্যানেলে সব বুকিংয়ের লিস্ট দেখানোর জন্য
     public function adminIndex()
     {
-        // সাময়িকভাবে business_id = 1 এর সব বুকিং নিয়ে আসছি (ইউজার এবং সার্ভিস সহ)
-        $bookings = Booking::with(['user', 'service'])
-            ->where('business_id', 1)
-            ->latest()
-            ->get();
+        $business = auth()->user()->business;
+        $bookings = $business ? $business->bookings()->with(['user', 'service'])->latest()->get() : [];
 
         return Inertia::render('Admin/Bookings', [
             'bookings' => $bookings
         ]);
     }
 
-    // বুকিংয়ের স্ট্যাটাস (Confirmed / Canceled) আপডেট করার জন্য
     public function updateStatus(Request $request, $id)
     {
         $request->validate([
             'status' => 'required|in:pending,confirmed,canceled,completed'
         ]);
 
-        $booking = Booking::where('business_id', 1)->findOrFail($id);
-        $booking->update([
-            'status' => $request->status
-        ]);
+        // নিশ্চিত করা হচ্ছে যে অ্যাডমিন শুধু তার নিজের ব্যবসার বুকিংই আপডেট করতে পারছেন
+        $booking = auth()->user()->business->bookings()->findOrFail($id);
+        $booking->update(['status' => $request->status]);
 
         return redirect()->back()->with('message', 'Booking status updated successfully!');
     }
