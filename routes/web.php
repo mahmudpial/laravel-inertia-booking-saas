@@ -29,6 +29,9 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/services', [ServiceController::class, 'index'])->name('services.index');
     Route::post('/services', [ServiceController::class, 'store'])->name('services.store');
+
+    Route::get('/admin/bookings', [BookingController::class, 'adminIndex'])->name('admin.bookings.index');
+    Route::patch('/admin/bookings/{id}/status', [BookingController::class, 'updateStatus'])->name('admin.bookings.update-status');
 });
 
 Route::get('/book', [BookingController::class, 'showBookingPage'])->name('booking.page');

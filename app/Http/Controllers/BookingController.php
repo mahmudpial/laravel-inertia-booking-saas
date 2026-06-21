@@ -126,4 +126,34 @@ class BookingController extends Controller
 
         return redirect()->back()->with('message', 'Appointment booked successfully!');
     }
+
+
+    // অ্যাডমিন প্যানেলে সব বুকিংয়ের লিস্ট দেখানোর জন্য
+    public function adminIndex()
+    {
+        // সাময়িকভাবে business_id = 1 এর সব বুকিং নিয়ে আসছি (ইউজার এবং সার্ভিস সহ)
+        $bookings = Booking::with(['user', 'service'])
+            ->where('business_id', 1)
+            ->latest()
+            ->get();
+
+        return Inertia::render('Admin/Bookings', [
+            'bookings' => $bookings
+        ]);
+    }
+
+    // বুকিংয়ের স্ট্যাটাস (Confirmed / Canceled) আপডেট করার জন্য
+    public function updateStatus(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|in:pending,confirmed,canceled,completed'
+        ]);
+
+        $booking = Booking::where('business_id', 1)->findOrFail($id);
+        $booking->update([
+            'status' => $request->status
+        ]);
+
+        return redirect()->back()->with('message', 'Booking status updated successfully!');
+    }
 }
