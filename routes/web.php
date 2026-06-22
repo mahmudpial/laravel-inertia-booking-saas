@@ -8,6 +8,7 @@ use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\AvailabilityController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -29,6 +30,7 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
+
     Route::get('/onboarding', [OnboardingController::class, 'index'])->name('onboarding.index');
     Route::post('/onboarding', [OnboardingController::class, 'store'])->name('onboarding.store');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -36,6 +38,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/services', [ServiceController::class, 'store'])->name('services.store');
     Route::get('/admin/bookings', [BookingController::class, 'adminIndex'])->name('admin.bookings.index');
     Route::patch('/admin/bookings/{id}/status', [BookingController::class, 'updateStatus'])->name('admin.bookings.updateStatus');
+    Route::get('/admin/availability', [AvailabilityController::class, 'index'])->name('admin.availability.index');
+    Route::put('/admin/availability', [AvailabilityController::class, 'update'])->name('admin.availability.update');
 });
 
 Route::get('/b/{slug}', [BookingController::class, 'showBookingPage'])->name('booking.page');
