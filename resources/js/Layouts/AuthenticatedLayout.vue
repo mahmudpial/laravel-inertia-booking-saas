@@ -37,6 +37,11 @@ const showingNavigationDropdown = ref(false);
                                     :active="route().current('admin.availability.index')">
                                     📅 Business Hours
                                 </NavLink>
+
+                                <NavLink :href="route('admin.services.index')"
+                                    :active="route().current('admin.services.index')">
+                                    ✂️ Services
+                                </NavLink>
                             </div>
                         </div>
 
@@ -104,6 +109,11 @@ const showingNavigationDropdown = ref(false);
                         <ResponsiveNavLink :href="route('admin.availability.index')"
                             :active="route().current('admin.availability.index')">
                             📅 Business Hours
+                        </ResponsiveNavLink>
+
+                        <ResponsiveNavLink :href="route('admin.services.index')"
+                            :active="route().current('admin.services.index')">
+                            ✂️ Services
                         </ResponsiveNavLink>
                     </div>
 
