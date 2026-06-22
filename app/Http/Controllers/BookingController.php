@@ -127,7 +127,10 @@ class BookingController extends Controller
 
     public function adminIndex()
     {
+        // লগইন করা ইউজারের ব্যবসা খুঁজে বের করা
         $business = auth()->user()->business;
+
+        // বিজনেসের সমস্ত বুকিং, সাথে কাস্টমার (user) এবং সার্ভিসের (service) বিবরণ সহ নিয়ে আসা
         $bookings = $business ? $business->bookings()->with(['user', 'service'])->latest()->get() : [];
 
         return Inertia::render('Admin/Bookings', [
@@ -143,6 +146,8 @@ class BookingController extends Controller
 
         // নিশ্চিত করা হচ্ছে যে অ্যাডমিন শুধু তার নিজের ব্যবসার বুকিংই আপডেট করতে পারছেন
         $booking = auth()->user()->business->bookings()->findOrFail($id);
+
+        // স্ট্যাটাস আপডেট করা
         $booking->update(['status' => $request->status]);
 
         return redirect()->back()->with('message', 'Booking status updated successfully!');

@@ -8,12 +8,15 @@ defineProps({
 
 // স্ট্যাটাস চেঞ্জ করার ফাংশন
 const changeStatus = (bookingId, newStatus) => {
-    router.patch(route('admin.bookings.update-status', bookingId), {
-        status: newStatus
-    }, {
-        preserveScroll: true,
-        onSuccess: () => alert('Status updated successfully!')
-    });
+    if (confirm(`Are you sure you want to change status to ${newStatus}?`)) {
+        // [FIXED] রাউট নাম ডট নোটেশনে আপডেট করা হয়েছে এবং অ্যাক্সিডেন্টাল ক্লিক এড়াতে কনফার্মেশন যোগ করা হয়েছে
+        router.patch(route('admin.bookings.updateStatus', bookingId), {
+            status: newStatus
+        }, {
+            preserveScroll: true,
+            onSuccess: () => alert(`🎉 Status updated to ${newStatus} successfully!`)
+        });
+    }
 };
 
 // স্ট্যাটাসের ওপর ভিত্তি করে ব্যাজের কালার নির্ধারণ
@@ -44,29 +47,36 @@ const getStatusClass = (status) => {
                                 <tr>
                                     <th
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Customer</th>
+                                        Customer
+                                    </th>
                                     <th
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Service</th>
+                                        Service
+                                    </th>
                                     <th
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Date & Time</th>
+                                        Date & Time
+                                    </th>
                                     <th
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Status</th>
+                                        Status
+                                    </th>
                                     <th
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Actions</th>
+                                        Actions
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
                                 <tr v-for="booking in bookings" :key="booking.id">
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-gray-900">{{ booking.user.name }}</div>
-                                        <div class="text-sm text-gray-500">{{ booking.user.email }}</div>
+                                        <div class="text-sm font-medium text-gray-900">{{ booking.user?.name || 'Guest
+                                            Customer'
+                                            }}</div>
+                                        <div class="text-sm text-gray-500">{{ booking.user?.email || 'N/A' }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {{ booking.service.name }}
+                                        {{ booking.service?.name || 'Deleted Service' }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         <div>{{ booking.booking_date }}</div>
@@ -74,21 +84,22 @@ const getStatusClass = (status) => {
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span
-                                            :class="[getStatusClass(booking.status), 'px-2 inline-flex text-xs leading-5 font-semibold rounded-full']">
+                                            :class="[getStatusClass(booking.status), 'px-2 inline-flex text-xs leading-5 font-semibold rounded-full uppercase']">
                                             {{ booking.status }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                        <button v-if="booking.status !== 'confirmed'"
-                                            @click="changeStatus(booking.id, 'confirmed')"
-                                            class="text-green-600 hover:text-green-900 bg-green-50 px-2 py-1 rounded">
-                                            Confirm
-                                        </button>
-                                        <button v-if="booking.status !== 'canceled'"
-                                            @click="changeStatus(booking.id, 'canceled')"
-                                            class="text-red-600 hover:text-red-900 bg-red-50 px-2 py-1 rounded">
-                                            Cancel
-                                        </button>
+                                        <template v-if="booking.status === 'pending'">
+                                            <button @click="changeStatus(booking.id, 'confirmed')"
+                                                class="text-green-600 hover:text-green-900 bg-green-50 hover:bg-green-100 px-2.5 py-1.5 rounded text-xs transition-all">
+                                                Confirm
+                                            </button>
+                                            <button @click="changeStatus(booking.id, 'canceled')"
+                                                class="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded text-xs transition-all">
+                                                Cancel
+                                            </button>
+                                        </template>
+                                        <span v-else class="text-xs text-gray-400 italic">No actions available</span>
                                     </td>
                                 </tr>
                                 <tr v-if="bookings.length === 0">
