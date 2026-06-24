@@ -42,6 +42,7 @@ const showingNavigationDropdown = ref(false);
                                     :active="route().current('admin.services.index')">
                                     ✂️ Services
                                 </NavLink>
+
                             </div>
                         </div>
 
@@ -66,8 +67,15 @@ const showingNavigationDropdown = ref(false);
 
                                     <template #content>
                                         <DropdownLink :href="route('profile.edit')">
-                                            Profile
+                                            User Profile
                                         </DropdownLink>
+
+                                        <DropdownLink :href="route('admin.settings.edit')">
+                                            ⚙️ Business Settings
+                                        </DropdownLink>
+
+                                        <div class="border-t border-gray-100"></div>
+
                                         <DropdownLink :href="route('logout')" method="post" as="button">
                                             Log Out
                                         </DropdownLink>
@@ -115,6 +123,11 @@ const showingNavigationDropdown = ref(false);
                             :active="route().current('admin.services.index')">
                             ✂️ Services
                         </ResponsiveNavLink>
+
+                        <ResponsiveNavLink :href="route('admin.settings.edit')"
+                            :active="route().current('admin.settings.edit')">
+                            ⚙️ Settings
+                        </ResponsiveNavLink>
                     </div>
 
                     <div class="border-t border-gray-200 pb-1 pt-4">
@@ -129,8 +142,13 @@ const showingNavigationDropdown = ref(false);
 
                         <div class="mt-3 space-y-1">
                             <ResponsiveNavLink :href="route('profile.edit')">
-                                Profile
+                                User Profile
                             </ResponsiveNavLink>
+
+                            <ResponsiveNavLink :href="route('admin.settings.edit')">
+                                ⚙️ Business Settings
+                            </ResponsiveNavLink>
+
                             <ResponsiveNavLink :href="route('logout')" method="post" as="button">
                                 Log Out
                             </ResponsiveNavLink>
