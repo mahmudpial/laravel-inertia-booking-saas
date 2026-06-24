@@ -9,13 +9,14 @@ use App\Models\Booking;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use App\Mail\BookingNotification;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Auth;
 
 class BookingController extends Controller
 {
     /**
      * Display the public booking landing page for a specific business.
-     * Fetches the business details along with its offered services using the unique slug.
-     * Throws a 404 exception if the business is not found.
      */
     public function showBookingPage($slug)
     {
@@ -29,8 +30,6 @@ class BookingController extends Controller
 
     /**
      * Generate dynamic and real-time available time slots for a specific date and service.
-     * Validates input, determines the day of the week, checks business hours/availability, 
-     * cross-references existing bookings to prevent overlaps, and pushes available time intervals.
      */
     public function getAvailableSlots(Request $request)
     {
@@ -43,10 +42,6 @@ class BookingController extends Controller
         $date = Carbon::parse($request->date);
         $dayOfWeek = $date->dayOfWeek;
 
-        /**
-         * Fetch the configured operating hours for the given business on this specific day of the week.
-         * If the business is closed or availability is not configured, return an empty array.
-         */
         $availability = Availability::where('business_id', $request->business_id)
             ->where('day_of_week', $dayOfWeek)
             ->first();
@@ -61,10 +56,6 @@ class BookingController extends Controller
         $startTime = Carbon::parse($request->date . ' ' . $availability->start_time);
         $endTime = Carbon::parse($request->date . ' ' . $availability->end_time);
 
-        /**
-         * Retrieve all active (non-canceled) existing appointments for the business on the selected date 
-         * to evaluate prospective slot availability.
-         */
         $existingBookings = Booking::where('business_id', $request->business_id)
             ->where('booking_date', $request->date)
             ->where('status', '!=', 'canceled')
@@ -72,10 +63,6 @@ class BookingController extends Controller
 
         $slots = [];
 
-        /**
-         * Loop through the operating hours timeline by incremental steps matching the service duration.
-         * Filter out slots that conflict or overlap with existing database booking times.
-         */
         while ($startTime->copy()->addMinutes($duration)->lte($endTime)) {
             $slotStartTime = $startTime->format('H:i:s');
             $slotEndTime = $startTime->copy()->addMinutes($duration)->format('H:i:s');
@@ -100,8 +87,6 @@ class BookingController extends Controller
 
     /**
      * Store a newly created booking in the database.
-     * Re-validates slot availability right before creation to avoid race conditions (double bookings),
-     * automatically calculates the slot end time based on service duration, and saves the record.
      */
     public function store(Request $request)
     {
@@ -117,10 +102,6 @@ class BookingController extends Controller
         $startTime = Carbon::parse($validated['booking_date'] . ' ' . $validated['start_time']);
         $endTime = $startTime->copy()->addMinutes($service->duration_minutes);
 
-        /**
-         * Strict runtime double-booking verification. Checks if an overlapping appointment has been 
-         * confirmed by another client in the fractions of a second prior to this request submission.
-         */
         $conflict = Booking::where('business_id', $validated['business_id'])
             ->where('booking_date', $validated['booking_date'])
             ->where('status', '!=', 'canceled')
@@ -138,9 +119,9 @@ class BookingController extends Controller
             return redirect()->back()->withErrors(['time' => 'This slot has just been booked by someone else!']);
         }
 
-        Booking::create([
+        $booking = Booking::create([
             'business_id' => $validated['business_id'],
-            'user_id' => auth()->id() ?? 1,
+            'user_id' => Auth::id() ?? 1,
             'service_id' => $validated['service_id'],
             'booking_date' => $validated['booking_date'],
             'start_time' => $validated['start_time'],
@@ -149,17 +130,25 @@ class BookingController extends Controller
             'notes' => $validated['notes'],
         ]);
 
+        // Freshly load relations before dispatching the mail templates safely
+        $booking->load(['business.user', 'service']);
+
+        $customerEmail = Auth::user()->email ?? 'customer@example.com';
+        Mail::to($customerEmail)->send(new BookingNotification($booking, 'customer'));
+
+        if ($booking->business && $booking->business->user) {
+            Mail::to($booking->business->user->email)->send(new BookingNotification($booking, 'admin'));
+        }
+
         return redirect()->back()->with('message', 'Appointment booked successfully!');
     }
 
     /**
-     * Display a comprehensive listing of bookings within the administrative back-office panel.
-     * Scope restricted exclusively to the authenticated user's registered business entity.
-     * Eager loads related customer details (user) and services for execution optimization.
+     * Display a comprehensive listing of bookings within the administrative panel.
      */
     public function adminIndex()
     {
-        $business = auth()->user()->business;
+        $business = Auth::user()->business;
         $bookings = $business ? $business->bookings()->with(['user', 'service'])->latest()->get() : [];
 
         return Inertia::render('Admin/Bookings', [
@@ -168,8 +157,7 @@ class BookingController extends Controller
     }
 
     /**
-     * Update the operational status of an existing booking instance (e.g., pending, confirmed, canceled, completed).
-     * Enforces tenancy boundaries by ensuring administrators can only modify appointments belonging to their own business.
+     * Update the operational status of an existing booking instance.
      */
     public function updateStatus(Request $request, $id)
     {
@@ -177,8 +165,14 @@ class BookingController extends Controller
             'status' => 'required|in:pending,confirmed,canceled,completed'
         ]);
 
-        $booking = auth()->user()->business->bookings()->findOrFail($id);
+        // CRITICAL CRASH FIX: Added 'service' relation to eager loading so the email blade doesn't throw a null error!
+        $booking = Auth::user()->business->bookings()->with(['user', 'business', 'service'])->findOrFail($id);
+
         $booking->update(['status' => $request->status]);
+
+        // Dispatch email notification securely
+        $customerEmail = $booking->user->email ?? Auth::user()->email;
+        Mail::to($customerEmail)->send(new BookingNotification($booking, 'customer'));
 
         return redirect()->back()->with('message', 'Booking status updated successfully!');
     }
