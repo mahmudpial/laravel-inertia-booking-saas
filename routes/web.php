@@ -9,8 +9,13 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\AvailabilityController;
+use App\Http\Controllers\BusinessSettingsController;
 
-// ১. কাস্টমারদের জন্য ল্যান্ডিং বা ওয়েলকাম পেজ
+/**
+ * Public Landing and Marketing Overview
+ * Renders the primary application welcome screen with essential session status
+ * for authorization and system engine properties.
+ */
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -20,41 +25,73 @@ Route::get('/', function () {
     ]);
 });
 
-// ২. প্রোফাইল ম্যানেজমেন্ট রাউটস (লগইন করা যেকোনো ইউজারের জন্য)
+/**
+ * Authenticated Profile Tenancy Controls
+ * Standard core account mutation layer protected via standard session authorization state layers.
+ */
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-// ৩. প্রটেক্টেড অ্যাডমিন রাউটস (লগইন এবং ভেরিফাইড ইউজারদের জন্য)
+/**
+ * Administrative SaaS Dashboard Back-Office Suite
+ * Enforces authenticated multi-tenant restrictions for administrative operations,
+ * configuration controls, and client arrangement tracking structures.
+ */
 Route::middleware(['auth', 'verified'])->group(function () {
 
-    // বিজনেস অনবোর্ডিং ফ্লো রাউটস
+    /**
+     * Tenant Business Onboarding Mechanism
+     * Restricts initial administrative authorization states until necessary organizational profiling data is compiled.
+     */
     Route::get('/onboarding', [OnboardingController::class, 'index'])->name('onboarding.index');
     Route::post('/onboarding', [OnboardingController::class, 'store'])->name('onboarding.store');
 
-    // রিয়েল-টাইম ড্যাশবোর্ড ওভারভিউ (ডুপ্লিকেটটি রিমুভ করে কন্ট্রোলার রাউট রাখা হলো)
+    /**
+     * Centralized Real-Time Metric Performance Index
+     */
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // সার্ভিস ম্যানেজমেন্ট CRUD রাউটস (নামগুলো লেআউটের সাথে মিল রেখে 'admin.services.*' করা হলো)
+    /**
+     * Service Inventory Management Operations (CRUD)
+     */
     Route::get('/admin/services', [ServiceController::class, 'index'])->name('admin.services.index');
     Route::post('/admin/services', [ServiceController::class, 'store'])->name('admin.services.store');
     Route::put('/admin/services/{service}', [ServiceController::class, 'update'])->name('admin.services.update');
     Route::delete('/admin/services/{service}', [ServiceController::class, 'destroy'])->name('admin.services.destroy');
 
-    // বুকিং রিকোয়েস্ট ও স্ট্যাটাস ম্যানেজমেন্ট রাউটস
+    /**
+     * Client Booking Matrix Overviews and Structural Status Updates
+     */
     Route::get('/admin/bookings', [BookingController::class, 'adminIndex'])->name('admin.bookings.index');
     Route::patch('/admin/bookings/{id}/status', [BookingController::class, 'updateStatus'])->name('admin.bookings.updateStatus');
 
-    // বিজনেস আওয়ার্স বা কাজের সময় ম্যানেজমেন্ট রাউটস
+    /**
+     * Operational Working Hours Matrix Configurations
+     */
     Route::get('/admin/availability', [AvailabilityController::class, 'index'])->name('admin.availability.index');
     Route::put('/admin/availability', [AvailabilityController::class, 'update'])->name('admin.availability.update');
+
+    // Business Profile and Branding Customization Layer
+    Route::get('/admin/settings', [BusinessSettingsController::class, 'edit'])->name('admin.settings.edit');
+    Route::post('/admin/settings', [BusinessSettingsController::class, 'update'])->name('admin.settings.update');
 });
 
-// ৪. পাবলিক বুকিং রাউটস (কাস্টমাররা যেখান থেকে অ্যাপয়েন্টমেন্ট বুক করবে)
+/**
+ * Public Front-Facing Client Booking Sub-System
+ * Globally exposed endpoints allowing unauthenticated customer traffic to lookup business timelines,
+ * verify runtime available service intervals, and commit booking payloads.
+ */
+
+// Route to display the business-specific public booking page layout using the unique slug identifier
 Route::get('/b/{slug}', [BookingController::class, 'showBookingPage'])->name('booking.page');
-Route::get('/api/available-slots', [BookingController::class, 'getAvailableSlots'])->name('api.slots');
-Route::post('/book', [BookingController::class, 'store'])->name('booking.store');
+
+// Endpoint utilized by Vue.js watchers to calculate open intervals on the selected date
+Route::get('/api/slots', [BookingController::class, 'getAvailableSlots'])->name('api.slots');
+
+// Secure endpoint to post client registration entries into the application ledger database
+Route::post('/booking/store', [BookingController::class, 'store'])->name('booking.store');
 
 require __DIR__ . '/auth.php';

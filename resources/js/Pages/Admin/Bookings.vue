@@ -9,7 +9,6 @@ defineProps({
 // স্ট্যাটাস চেঞ্জ করার ফাংশন
 const changeStatus = (bookingId, newStatus) => {
     if (confirm(`Are you sure you want to change status to ${newStatus}?`)) {
-        // [FIXED] রাউট নাম ডট নোটেশনে আপডেট করা হয়েছে এবং অ্যাক্সিডেন্টাল ক্লিক এড়াতে কনফার্মেশন যোগ করা হয়েছে
         router.patch(route('admin.bookings.updateStatus', bookingId), {
             status: newStatus
         }, {
@@ -70,10 +69,12 @@ const getStatusClass = (status) => {
                             <tbody class="bg-white divide-y divide-gray-200">
                                 <tr v-for="booking in bookings" :key="booking.id">
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-gray-900">{{ booking.user?.name || 'Guest
-                                            Customer'
-                                            }}</div>
-                                        <div class="text-sm text-gray-500">{{ booking.user?.email || 'N/A' }}</div>
+                                        <div class="text-sm font-medium text-gray-900">
+                                            {{ booking.user?.name || 'Guest Customer' }}
+                                        </div>
+                                        <div class="text-sm text-gray-500">
+                                            {{ booking.user?.email || 'N/A' }}
+                                        </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {{ booking.service?.name || 'Deleted Service' }}
@@ -103,8 +104,9 @@ const getStatusClass = (status) => {
                                     </td>
                                 </tr>
                                 <tr v-if="bookings.length === 0">
-                                    <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">No bookings
-                                        found.</td>
+                                    <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
+                                        No bookings found.
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>

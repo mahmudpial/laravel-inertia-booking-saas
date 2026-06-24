@@ -12,10 +12,13 @@ use Inertia\Inertia;
 
 class BookingController extends Controller
 {
-    // ইউআরএল থেকে $slug রিসিভ করা
+    /**
+     * Display the public booking landing page for a specific business.
+     * Fetches the business details along with its offered services using the unique slug.
+     * Throws a 404 exception if the business is not found.
+     */
     public function showBookingPage($slug)
     {
-        // স্লগ অনুযায়ী ব্যবসা খুঁজে বের করা, না পেলে ৪0৪ এরর দেবে
         $business = Business::with('services')->where('slug', $slug)->firstOrFail();
 
         return Inertia::render('Booking/Create', [
@@ -23,10 +26,16 @@ class BookingController extends Controller
             'services' => $business->services
         ]);
     }
+
+    /**
+     * Generate dynamic and real-time available time slots for a specific date and service.
+     * Validates input, determines the day of the week, checks business hours/availability, 
+     * cross-references existing bookings to prevent overlaps, and pushes available time intervals.
+     */
     public function getAvailableSlots(Request $request)
     {
         $request->validate([
-            'business_id' => 'required|exists:businesses,id', // ফ্রন্টএন্ড থেকে বিজনেস আইডি আসবে
+            'business_id' => 'required|exists:businesses,id',
             'date' => 'required|date|after_or_equal:today',
             'service_id' => 'required|exists:services,id',
         ]);
@@ -34,7 +43,10 @@ class BookingController extends Controller
         $date = Carbon::parse($request->date);
         $dayOfWeek = $date->dayOfWeek;
 
-        // ফিক্সড ১ এর বদলে রিকোয়েস্ট থেকে আসা বিজনেস আইডি ব্যবহার করা
+        /**
+         * Fetch the configured operating hours for the given business on this specific day of the week.
+         * If the business is closed or availability is not configured, return an empty array.
+         */
         $availability = Availability::where('business_id', $request->business_id)
             ->where('day_of_week', $dayOfWeek)
             ->first();
@@ -49,6 +61,10 @@ class BookingController extends Controller
         $startTime = Carbon::parse($request->date . ' ' . $availability->start_time);
         $endTime = Carbon::parse($request->date . ' ' . $availability->end_time);
 
+        /**
+         * Retrieve all active (non-canceled) existing appointments for the business on the selected date 
+         * to evaluate prospective slot availability.
+         */
         $existingBookings = Booking::where('business_id', $request->business_id)
             ->where('booking_date', $request->date)
             ->where('status', '!=', 'canceled')
@@ -56,6 +72,10 @@ class BookingController extends Controller
 
         $slots = [];
 
+        /**
+         * Loop through the operating hours timeline by incremental steps matching the service duration.
+         * Filter out slots that conflict or overlap with existing database booking times.
+         */
         while ($startTime->copy()->addMinutes($duration)->lte($endTime)) {
             $slotStartTime = $startTime->format('H:i:s');
             $slotEndTime = $startTime->copy()->addMinutes($duration)->format('H:i:s');
@@ -78,12 +98,15 @@ class BookingController extends Controller
         return response()->json($slots);
     }
 
-    // 🔥 নতুন মেথড: বুকিং ডাটাবেসে সেভ করা
-    // বুকিং স্টোর করার মেথড আপডেট
+    /**
+     * Store a newly created booking in the database.
+     * Re-validates slot availability right before creation to avoid race conditions (double bookings),
+     * automatically calculates the slot end time based on service duration, and saves the record.
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'business_id' => 'required|exists:businesses,id', // নতুন সংযোজন
+            'business_id' => 'required|exists:businesses,id',
             'service_id' => 'required|exists:services,id',
             'booking_date' => 'required|date|after_or_equal:today',
             'start_time' => 'required',
@@ -94,6 +117,10 @@ class BookingController extends Controller
         $startTime = Carbon::parse($validated['booking_date'] . ' ' . $validated['start_time']);
         $endTime = $startTime->copy()->addMinutes($service->duration_minutes);
 
+        /**
+         * Strict runtime double-booking verification. Checks if an overlapping appointment has been 
+         * confirmed by another client in the fractions of a second prior to this request submission.
+         */
         $conflict = Booking::where('business_id', $validated['business_id'])
             ->where('booking_date', $validated['booking_date'])
             ->where('status', '!=', 'canceled')
@@ -113,7 +140,7 @@ class BookingController extends Controller
 
         Booking::create([
             'business_id' => $validated['business_id'],
-            'user_id' => auth()->id() ?? 1, // লগইন করা ইউজার থাকলে তার আইডি, না থাকলে ডিফল্ট ১
+            'user_id' => auth()->id() ?? 1,
             'service_id' => $validated['service_id'],
             'booking_date' => $validated['booking_date'],
             'start_time' => $validated['start_time'],
@@ -125,12 +152,14 @@ class BookingController extends Controller
         return redirect()->back()->with('message', 'Appointment booked successfully!');
     }
 
+    /**
+     * Display a comprehensive listing of bookings within the administrative back-office panel.
+     * Scope restricted exclusively to the authenticated user's registered business entity.
+     * Eager loads related customer details (user) and services for execution optimization.
+     */
     public function adminIndex()
     {
-        // লগইন করা ইউজারের ব্যবসা খুঁজে বের করা
         $business = auth()->user()->business;
-
-        // বিজনেসের সমস্ত বুকিং, সাথে কাস্টমার (user) এবং সার্ভিসের (service) বিবরণ সহ নিয়ে আসা
         $bookings = $business ? $business->bookings()->with(['user', 'service'])->latest()->get() : [];
 
         return Inertia::render('Admin/Bookings', [
@@ -138,16 +167,17 @@ class BookingController extends Controller
         ]);
     }
 
+    /**
+     * Update the operational status of an existing booking instance (e.g., pending, confirmed, canceled, completed).
+     * Enforces tenancy boundaries by ensuring administrators can only modify appointments belonging to their own business.
+     */
     public function updateStatus(Request $request, $id)
     {
         $request->validate([
             'status' => 'required|in:pending,confirmed,canceled,completed'
         ]);
 
-        // নিশ্চিত করা হচ্ছে যে অ্যাডমিন শুধু তার নিজের ব্যবসার বুকিংই আপডেট করতে পারছেন
         $booking = auth()->user()->business->bookings()->findOrFail($id);
-
-        // স্ট্যাটাস আপডেট করা
         $booking->update(['status' => $request->status]);
 
         return redirect()->back()->with('message', 'Booking status updated successfully!');
