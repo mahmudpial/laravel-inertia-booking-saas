@@ -68,6 +68,13 @@ const showingNavigationDropdown = ref(false);
                                         <DropdownLink :href="route('profile.edit')">
                                             Profile
                                         </DropdownLink>
+
+                                        <DropdownLink :href="route('admin.settings.edit')">
+                                            ⚙️ Business Settings
+                                        </DropdownLink>
+
+                                        <div class="border-t border-gray-100"></div>
+
                                         <DropdownLink :href="route('logout')" method="post" as="button">
                                             Log Out
                                         </DropdownLink>
@@ -131,6 +138,11 @@ const showingNavigationDropdown = ref(false);
                             <ResponsiveNavLink :href="route('profile.edit')">
                                 Profile
                             </ResponsiveNavLink>
+
+                            <ResponsiveNavLink :href="route('admin.settings.edit')">
+                                ⚙️ Business Settings
+                            </ResponsiveNavLink>
+
                             <ResponsiveNavLink :href="route('logout')" method="post" as="button">
                                 Log Out
                             </ResponsiveNavLink>
