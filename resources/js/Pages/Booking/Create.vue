@@ -1,67 +1,16 @@
 <script setup>
-import { ref, watch, computed } from 'vue';
-import { Head, useForm } from '@inertiajs/vue3';
+import { ref, computed } from 'vue';
+import { useForm, Head } from '@inertiajs/vue3';
 import axios from 'axios';
 
-const props = defineProps({
-    business: Object,
-    services: Array
-});
+const props = defineProps({ business: Object, services: Array });
 
-// Component reactive states for filtering and time slot generation
-const selectedService = ref('');
 const selectedDate = ref('');
-const slots = ref([]);
-const selectedTime = ref('');
+const availableSlots = ref([]);
 const loading = ref(false);
+const currentStep = ref(1);
 
-/**
- * Dynamically compute today's date formatted as YYYY-MM-DD.
- * Used as the minimum boundary for the HTML date picker to prevent past booking selections.
- */
-const minDate = computed(() => {
-    return new Date().toISOString().split('T')[0];
-});
-
-/**
- * Fetch available time slots asynchronously from the backend API.
- * Clears dependent selections, runs validation guards, passes query parameters via Axios,
- * and updates the locally tracked slots array based on business and runtime availability.
- */
-const fetchSlots = async () => {
-    if (!selectedService.value || !selectedDate.value) return;
-
-    loading.value = true;
-    slots.value = [];
-    selectedTime.value = '';
-
-    try {
-        const response = await axios.get(route('api.slots'), {
-            params: {
-                business_id: props.business.id,
-                service_id: selectedService.value,
-                date: selectedDate.value
-            }
-        });
-        slots.value = response.data;
-    } catch (error) {
-        console.error("An error occurred while fetching availability slots:", error);
-    } finally {
-        loading.value = false;
-    }
-};
-
-/**
- * Watcher configuration targeting the service and date states.
- * Automatically triggers the slot regeneration sequence whenever either field value mutates.
- */
-watch([selectedService, selectedDate], fetchSlots);
-
-/**
- * Core Inertia Form Object instance initialization.
- * Defines the request structure and handles standard processing states, routing, and resetting parameters.
- */
-const bookingForm = useForm({
+const form = useForm({
     business_id: props.business.id,
     service_id: '',
     booking_date: '',
@@ -69,38 +18,40 @@ const bookingForm = useForm({
     notes: ''
 });
 
-/**
- * Process client-side form submission.
- * Maps active tracking variables into the form state payload right before transmission,
- * manages successful resetting protocols, and parses database-level concurrency errors into readable alerts.
- */
-const confirmBooking = () => {
-    bookingForm.business_id = props.business.id;
-    bookingForm.service_id = selectedService.value;
-    bookingForm.booking_date = selectedDate.value;
-    bookingForm.start_time = selectedTime.value;
+const selectedService = computed(() =>
+    props.services.find(s => s.id === form.service_id)
+);
 
-    bookingForm.post(route('booking.store'), {
+const fetchSlots = async () => {
+    if (!form.service_id || !selectedDate.value) return;
+    loading.value = true;
+    try {
+        const response = await axios.get(route('api.slots'), {
+            params: { business_id: props.business.id, service_id: form.service_id, date: selectedDate.value }
+        });
+        availableSlots.value = response.data;
+    } catch (error) {
+        console.error(error);
+    } finally {
+        loading.value = false;
+    }
+};
+
+const selectService = (id) => {
+    form.service_id = id;
+    currentStep.value = 2;
+    if (selectedDate.value) fetchSlots();
+};
+
+const submit = () => {
+    form.booking_date = selectedDate.value;
+    form.post(route('booking.store'), {
         preserveScroll: true,
         onSuccess: () => {
-            alert('🎉 Appointment Booked Successfully!');
-
-            // Clear current operational state variables upon successful processing
-            slots.value = [];
-            selectedTime.value = '';
+            form.reset();
             selectedDate.value = '';
-            selectedService.value = '';
-            bookingForm.reset();
-        },
-        onError: (errors) => {
-            // Handle and display specialized race condition double-booking alerts
-            if (errors.time) {
-                alert(errors.time);
-            } else {
-                // Fallback catch-all structural mapping for generic validation messages
-                const errorMessages = Object.values(errors).join('\n');
-                alert(errorMessages || 'Something went wrong! Please check the console.');
-            }
+            availableSlots.value = [];
+            currentStep.value = 1;
         }
     });
 };
@@ -108,96 +59,259 @@ const confirmBooking = () => {
 
 <template>
 
-    <Head :title="'Book an Appointment - ' + business.name" />
+    <Head :title="'Book Appointment | ' + business.name" />
 
-    <div class="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
-        <div class="max-w-xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+    <!-- RADIAL BACKGROUND (Matches Edit.vue) -->
+    <div
+        class="min-h-screen bg-[#F8FAFC] bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] font-sans antialiased text-[#11131A]">
 
-            <div class="relative h-48 w-full bg-indigo-900">
-                <img v-if="business.banner" :src="'/storage/' + business.banner"
-                    class="w-full h-full object-cover opacity-80" alt="Business Banner" />
-                <div v-else class="w-full h-full flex items-center justify-center text-indigo-200 font-medium">
-                    Welcome to {{ business.name }}
-                </div>
+        <div class="relative z-10 max-w-5xl mx-auto px-4 py-12 lg:py-24">
 
-                <div class="absolute -bottom-10 left-6">
+            <!-- EDITORIAL HERO HEADER -->
+            <header class="text-center mb-16 lg:mb-24">
+                <div class="inline-flex mb-8">
                     <div
-                        class="w-20 h-20 bg-white rounded-full p-1 shadow-md border border-gray-100 overflow-hidden flex items-center justify-center">
-                        <img v-if="business.logo" :src="'/storage/' + business.logo"
-                            class="w-full h-full object-cover rounded-full" alt="Business Logo" />
-                        <span v-else class="text-xl font-bold text-indigo-600">{{ business.name.charAt(0) }}</span>
+                        class="w-20 h-20 bg-[#11131A] rounded-[2rem] flex items-center justify-center text-white text-3xl font-black shadow-2xl shadow-indigo-900/20">
+                        {{ business.name.charAt(0) }}
                     </div>
                 </div>
-            </div>
-
-            <div class="pt-12 px-6 pb-6 border-b border-gray-100">
-                <h2 class="text-2xl font-bold text-gray-900">{{ business.name }}</h2>
-                <p v-if="business.description" class="mt-2 text-sm text-gray-600 leading-relaxed">
-                    {{ business.description }}
+                <p class="text-indigo-600 font-black text-xs uppercase tracking-[0.4em] mb-4">Official Booking Portal
                 </p>
-                <div v-if="business.address" class="mt-3 flex items-center text-xs text-gray-500 space-x-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none"
-                        viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span>{{ business.address }}</span>
-                </div>
-            </div>
+                <h1 class="text-5xl lg:text-7xl font-black tracking-tighter leading-none mb-6">
+                    {{ business.name }}<span class="text-slate-300">.</span>
+                </h1>
+                <p class="text-slate-500 max-w-lg mx-auto text-lg font-medium leading-relaxed">
+                    {{ business.description || `Welcome to our premium service center. Select a slot to begin your
+                    experience.` }}
+                </p>
+            </header>
 
-            <div class="p-6 space-y-6">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Select Service</label>
-                    <select v-model="selectedService"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                        <option value="" disabled>Choose a service</option>
-                        <option v-for="service in services" :key="service.id" :value="service.id">
-                            {{ service.name }} (${{ service.price }}) - {{ service.duration_minutes }} mins
-                        </option>
-                    </select>
-                </div>
+            <!-- MAIN INTERFACE CARD -->
+            <div
+                class="bg-white/80 backdrop-blur-xl border border-slate-200/60 rounded-[3.5rem] shadow-2xl shadow-slate-200/50 overflow-hidden">
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Select Date</label>
-                    <input v-model="selectedDate" type="date" :min="minDate"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                </div>
-
-                <div v-if="selectedService && selectedDate">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Available Slots</label>
-
-                    <div v-if="loading" class="text-center py-4 text-sm text-gray-500">Calculating slots...</div>
-
-                    <div v-else-if="slots.length === 0" class="text-center py-4 text-sm text-red-500 font-medium">
-                        Sorry, we are closed or fully booked on this day!
-                    </div>
-
-                    <div v-else class="grid grid-cols-3 gap-2">
-                        <button v-for="slot in slots" :key="slot.time" @click="selectedTime = slot.time" type="button"
-                            :class="[
-                                selectedTime === slot.time
-                                    ? 'bg-indigo-600 text-white border-indigo-600'
-                                    : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-500',
-                                'border text-center py-2 rounded-md text-sm font-medium transition-all'
-                            ]">
-                            {{ slot.formatted_time }}
-                        </button>
+                <!-- MINIMAL STEPPER -->
+                <div class="flex items-center px-10 pt-10 gap-4">
+                    <div v-for="step in 3" :key="step" class="flex-1 flex flex-col gap-2">
+                        <div class="h-1 rounded-full transition-all duration-700"
+                            :class="currentStep >= step ? 'bg-indigo-600' : 'bg-slate-100'"></div>
+                        <span :class="currentStep >= step ? 'text-indigo-600' : 'text-slate-300'"
+                            class="text-[10px] font-black uppercase tracking-widest">
+                            Phase 0{{ step }}
+                        </span>
                     </div>
                 </div>
 
-                <div v-if="selectedTime" class="pt-4">
-                    <textarea v-model="bookingForm.notes" placeholder="Any special instructions? (Optional)"
-                        class="mb-3 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                        rows="2"></textarea>
+                <div class="p-8 lg:p-16">
+                    <form @submit.prevent="submit">
 
-                    <button @click="confirmBooking" :disabled="bookingForm.processing"
-                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-md shadow transition-colors">
-                        {{ bookingForm.processing ? 'Booking...' : 'Confirm Appointment' }}
-                    </button>
+                        <!-- STEP 1: SERVICE GALLERY -->
+                        <Transition name="fade" mode="out-in">
+                            <div v-if="currentStep === 1" class="space-y-10">
+                                <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                                    <h2 class="text-3xl font-black tracking-tight">Select <span
+                                            class="text-slate-400 font-medium">Service</span></h2>
+                                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">All prices in
+                                        USD</p>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <button v-for="s in services" :key="s.id" type="button" @click="selectService(s.id)"
+                                        class="group text-left p-8 rounded-[2.5rem] border border-slate-100 bg-white hover:border-indigo-500 hover:shadow-2xl hover:shadow-indigo-500/10 transition-all duration-500 relative overflow-hidden">
+                                        <div
+                                            class="absolute -right-4 -bottom-4 w-24 h-24 bg-indigo-50 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity">
+                                        </div>
+
+                                        <div class="relative z-10 flex justify-between items-start mb-12">
+                                            <div
+                                                class="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500">
+                                                <svg class="w-6 h-6" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                </svg>
+                                            </div>
+                                            <div class="text-right">
+                                                <p
+                                                    class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                    Starting from</p>
+                                                <p class="text-2xl font-black text-[#11131A]">${{ s.price }}</p>
+                                            </div>
+                                        </div>
+
+                                        <h3
+                                            class="text-xl font-black text-[#11131A] group-hover:text-indigo-600 transition-colors">
+                                            {{ s.name }}</h3>
+                                        <p class="text-xs text-slate-400 mt-2 font-bold uppercase tracking-[0.2em]">{{
+                                            s.duration_minutes }} Minutes Session</p>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- STEP 2: ENGINEERED SCHEDULING -->
+                            <div v-else-if="currentStep === 2" class="space-y-12">
+                                <div class="flex items-center gap-6">
+                                    <button @click="currentStep = 1" type="button"
+                                        class="w-12 h-12 bg-slate-100 flex items-center justify-center rounded-2xl hover:bg-[#11131A] hover:text-white transition-all">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                                d="M15 19l-7-7 7-7" />
+                                        </svg>
+                                    </button>
+                                    <div>
+                                        <h2 class="text-3xl font-black tracking-tight">Scheduling.</h2>
+                                        <p class="text-sm font-bold text-indigo-600 uppercase tracking-widest">{{
+                                            selectedService.name }}</p>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+                                    <!-- Calendar Input Container -->
+                                    <div class="bg-slate-50/50 p-8 rounded-[2.5rem] border border-slate-100">
+                                        <label
+                                            class="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-6 block">01.
+                                            Pick a Date</label>
+                                        <input type="date" v-model="selectedDate" @change="fetchSlots"
+                                            class="w-full bg-white border-none rounded-2xl p-6 text-base font-black shadow-sm focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer" />
+                                    </div>
+
+                                    <!-- Time Slot Grid -->
+                                    <div>
+                                        <label
+                                            class="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-6 block">02.
+                                            Select Available Window</label>
+
+                                        <div v-if="loading" class="flex items-center justify-center py-12">
+                                            <div
+                                                class="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin">
+                                            </div>
+                                        </div>
+
+                                        <div v-else-if="availableSlots.length > 0"
+                                            class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                            <button v-for="slot in availableSlots" :key="slot.time" type="button"
+                                                @click="form.start_time = slot.time"
+                                                :class="form.start_time === slot.time ? 'bg-[#11131A] text-white shadow-2xl scale-105' : 'bg-white border border-slate-100 text-slate-600 hover:border-indigo-400'"
+                                                class="py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all duration-300">
+                                                {{ slot.formatted }}
+                                            </button>
+                                        </div>
+
+                                        <div v-else
+                                            class="text-center py-12 px-8 bg-slate-50/50 rounded-[2.5rem] border-2 border-dashed border-slate-200">
+                                            <p
+                                                class="text-xs font-bold text-slate-400 uppercase tracking-widest leading-loose">
+                                                Select a date to scan<br />available time slots</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div
+                                    class="pt-10 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-6">
+                                    <div v-if="form.start_time"
+                                        class="px-6 py-3 bg-indigo-50 border border-indigo-100 rounded-2xl flex items-center gap-3">
+                                        <span class="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+                                        <p class="text-xs font-black text-indigo-700 uppercase tracking-widest">{{
+                                            selectedDate }} at {{ form.start_time }}</p>
+                                    </div>
+                                    <button type="button" @click="currentStep = 3" :disabled="!form.start_time"
+                                        class="w-full sm:w-auto px-10 py-5 bg-[#11131A] text-white text-[10px] font-black uppercase tracking-[0.3em] rounded-2xl hover:bg-indigo-600 transition-all shadow-xl disabled:opacity-20 active:scale-95">
+                                        Finalize Details
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- STEP 3: SUMMARY & COMMIT -->
+                            <div v-else-if="currentStep === 3" class="max-w-xl mx-auto space-y-12">
+                                <div class="text-center">
+                                    <h2 class="text-3xl font-black tracking-tight mb-2">Finalize Booking.</h2>
+                                    <p class="text-sm font-medium text-slate-500 uppercase tracking-widest">Review and
+                                        confirm your session</p>
+                                </div>
+
+                                <div
+                                    class="bg-[#11131A] p-10 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
+                                    <div class="absolute top-0 right-0 p-8 opacity-10">
+                                        <svg class="w-24 h-24" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                                            <path fill-rule="evenodd"
+                                                d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
+                                                clip-rule="evenodd" />
+                                        </svg>
+                                    </div>
+                                    <div class="relative z-10">
+                                        <p
+                                            class="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] mb-6">
+                                            Reservation Summary</p>
+                                        <h3 class="text-2xl font-black mb-2">{{ selectedService.name }}</h3>
+                                        <div class="flex items-center gap-3 text-slate-400 font-bold text-sm">
+                                            <span>{{ selectedDate }}</span>
+                                            <span class="w-1 h-1 bg-slate-600 rounded-full"></span>
+                                            <span class="text-indigo-400">{{ form.start_time }}</span>
+                                        </div>
+                                        <button @click="currentStep = 1"
+                                            class="mt-8 text-[10px] font-black uppercase tracking-widest border-b border-indigo-500 pb-1 hover:text-indigo-400 transition-colors">Edit
+                                            Appointment</button>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-4">
+                                    <label
+                                        class="text-[10px] font-black uppercase tracking-widest text-slate-400 block ml-2">Special
+                                        Requests (Optional)</label>
+                                    <textarea v-model="form.notes" rows="4" placeholder="Mention any preferences..."
+                                        class="w-full bg-slate-50 border-none rounded-[2rem] p-6 text-sm font-bold focus:ring-2 focus:ring-indigo-500 transition-all resize-none"></textarea>
+                                </div>
+
+                                <button type="submit" :disabled="form.processing"
+                                    class="w-full py-6 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-[0.4em] rounded-[2rem] hover:bg-indigo-700 transition-all shadow-2xl shadow-indigo-200 active:scale-[0.98] disabled:opacity-50">
+                                    {{ form.processing ? 'Securing Slot...' : 'Confirm Appointment' }}
+                                </button>
+                            </div>
+                        </Transition>
+
+                    </form>
                 </div>
             </div>
+
+            <!-- FOOTER INFO -->
+            <footer class="mt-20 text-center">
+                <p class="text-[10px] font-black text-slate-300 uppercase tracking-[0.5em]">Powered by SmartBooking
+                    Engine v2.0</p>
+            </footer>
         </div>
     </div>
 </template>
+
+<style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap');
+
+:deep(body),
+:deep(input),
+:deep(textarea),
+:deep(h1),
+:deep(h2),
+:deep(h3) {
+    font-family: 'Space Grotesk', sans-serif !important;
+}
+
+/* Transitions */
+.fade-enter-active,
+.fade-leave-active {
+    transition: all 0.4s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+    transform: translateY(10px);
+}
+
+/* Custom Date input styling */
+input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    filter: invert(0.1) brightness(0.5);
+    width: 20px;
+    height: 20px;
+}
+</style>

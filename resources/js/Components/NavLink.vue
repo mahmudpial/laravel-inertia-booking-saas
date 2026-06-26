@@ -12,15 +12,53 @@ const props = defineProps({
     },
 });
 
+// Refined for Dark Navbar: No background colors, just text and dash
 const classes = computed(() =>
     props.active
-        ? 'inline-flex items-center px-1 pt-1 border-b-2 border-indigo-400 text-sm font-medium leading-5 text-gray-900 focus:outline-none focus:border-indigo-700 transition duration-150 ease-in-out'
-        : 'inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out',
+        ? 'relative inline-flex items-center px-4 h-full text-[10px] font-black uppercase tracking-[0.2em] text-white transition-all duration-300 group'
+        : 'relative inline-flex items-center px-4 h-full text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-white transition-all duration-300 group',
 );
 </script>
 
 <template>
     <Link :href="href" :class="classes">
-        <slot />
+        <!-- LINK TEXT -->
+        <span class="relative z-10">
+            <slot />
+        </span>
+
+        <!-- GLOWING DASH INDICATOR -->
+        <transition name="slide">
+            <div v-if="active"
+                class="absolute bottom-0 left-4 right-4 h-1 bg-indigo-500 rounded-full shadow-[0_0_12px_rgba(99,102,241,0.8)]">
+            </div>
+        </transition>
     </Link>
 </template>
+
+<style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@900&display=swap');
+
+a {
+    font-family: 'Space Grotesk', sans-serif !important;
+    text-decoration: none !important;
+}
+
+/* Slide animation for the active dash */
+.slide-enter-active {
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.slide-enter-from {
+    opacity: 0;
+    transform: scaleX(0);
+}
+
+.slide-leave-active {
+    transition: all 0.2s ease-in;
+}
+
+.slide-leave-to {
+    opacity: 0;
+}
+</style>

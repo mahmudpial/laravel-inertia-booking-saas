@@ -4,75 +4,90 @@ namespace App\Http\Controllers;
 
 use App\Models\Service;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use Inertia\Response;
+use Illuminate\Http\RedirectResponse;
 
 class ServiceController extends Controller
 {
-    // ১. সার্ভিসের লিস্ট দেখানো
-    public function index()
+    /**
+     * Display a listing of the business services.
+     */
+    public function index(): Response
     {
-        $user = auth()->user();
-        $business = $user ? $user->business : null;
+        $user = Auth::user();
 
-        $services = $business ? $business->services()->latest()->get() : [];
+        // বিজনেস না থাকলে একটি empty collection পাঠান, এতে অ্যাপ ক্র্যাশ করবে না
+        $services = ($user && $user->business) ? $user->business->services()->latest()->get() : collect();
 
         return Inertia::render('Admin/Services/Index', [
             'services' => $services
         ]);
     }
 
-    // ২. নতুন সার্ভিস ডাটাবেসে সেভ করা
-    public function store(Request $request)
+    /**
+     * Persist a new service entry.
+     */
+    public function store(Request $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'price' => 'required|numeric|min:0',
-            'duration_minutes' => 'required|integer|min:1', // 👈 'duration' পরিবর্তন করে 'duration_minutes' করা হলো
-            'description' => 'nullable|string',
-        ]);
-
-        $business = auth()->user()->business;
+        $business = Auth::user()->business;
 
         if (!$business) {
-            return redirect()->back()->withErrors([
-                'name' => 'You do not have a registered business! Please setup your business first.'
-            ]);
-        }
-
-        // ব্যবসার আন্ডারে সার্ভিস তৈরি
-        $business->services()->create($validated);
-
-        return redirect()->back()->with('message', 'Service created successfully!');
-    }
-
-    // ৩. বিদ্যমান সার্ভিস আপডেট করা (🔧 এডিট ফিচার)
-    public function update(Request $request, Service $service)
-    {
-        if ($service->business_id !== auth()->user()->business->id) {
-            abort(403, 'Unauthorized action.');
+            return redirect()->back()->withErrors(['business' => 'Business profile not found. Please complete your onboarding.']);
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'price' => 'required|numeric|min:0',
-            'duration_minutes' => 'required|integer|min:1', // 👈 'duration' পরিবর্তন করে 'duration_minutes' করা হলো
-            'description' => 'nullable|string',
+            'name' => ['required', 'string', 'max:255'],
+            'price' => ['required', 'numeric', 'min:0'],
+            'duration_minutes' => ['required', 'integer', 'min:1'],
+            'description' => ['nullable', 'string'],
+        ]);
+
+        $validated['is_active'] = true;
+        $business->services()->create($validated);
+
+        return redirect()->back()->with('success', 'Service created successfully.');
+    }
+
+    /**
+     * Update an existing service record.
+     */
+    public function update(Request $request, Service $service): RedirectResponse
+    {
+        $business = Auth::user()->business;
+
+        // নিরাপত্তা চেক: বিজনেস এক্সিস্ট করে কি না এবং সার্ভিসটি ওই বিজনেসের কি না
+        if (!$business || $service->business_id !== $business->id) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'price' => ['required', 'numeric', 'min:0'],
+            'duration_minutes' => ['required', 'integer', 'min:1'],
+            'description' => ['nullable', 'string'],
         ]);
 
         $service->update($validated);
 
-        return redirect()->back()->with('message', 'Service updated successfully!');
+        return redirect()->back()->with('success', 'Service updated successfully.');
     }
 
-    // ৪. সার্ভিস ডিলিট করা (🗑️ ডিলিট ফিচার)
-    public function destroy(Service $service)
+    /**
+     * Remove the specified service.
+     */
+    public function destroy(Service $service): RedirectResponse
     {
-        if ($service->business_id !== auth()->user()->business->id) {
-            abort(403, 'Unauthorized action.');
+        $business = Auth::user()->business;
+
+        // নিরাপত্তা চেক
+        if (!$business || $service->business_id !== $business->id) {
+            abort(403, 'Unauthorized access.');
         }
 
         $service->delete();
 
-        return redirect()->back()->with('message', 'Service deleted successfully!');
+        return redirect()->back()->with('success', 'Service deleted successfully.');
     }
 }

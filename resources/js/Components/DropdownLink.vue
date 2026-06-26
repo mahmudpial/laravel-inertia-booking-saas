@@ -6,14 +6,31 @@ defineProps({
         type: String,
         required: true,
     },
+    method: {
+        type: String,
+        default: 'get',
+    },
+    as: {
+        type: String,
+        default: 'a',
+    },
 });
 </script>
 
 <template>
-    <Link
-        :href="href"
-        class="block w-full px-4 py-2 text-start text-sm leading-5 text-gray-700 transition duration-150 ease-in-out hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
-    >
-        <slot />
-    </Link>
+    <div class="px-2">
+        <Link :href="href" :method="method" :as="as"
+            class="group block w-full px-4 py-3 text-start text-[10px] font-black uppercase tracking-[0.2em] text-[#11131A] rounded-2xl transition-all duration-300 hover:bg-indigo-50/50 hover:text-indigo-600 hover:pl-5 focus:outline-none focus:bg-indigo-50/50 active:scale-[0.98]">
+            <slot />
+        </Link>
+    </div>
 </template>
+
+<style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@900&display=swap');
+
+a,
+button {
+    font-family: 'Space Grotesk', sans-serif !important;
+}
+</style>
