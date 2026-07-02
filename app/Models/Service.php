@@ -12,4 +12,9 @@ class Service extends Model
     {
         return $this->belongsTo(Business::class);
     }
+
+    public function addons()
+    {
+        return $this->hasMany(ServiceAddon::class);
+    }
 }

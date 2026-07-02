@@ -2,59 +2,59 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Business;
+use App\Models\Booking;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Carbon\Carbon;
 
+/**
+ * Class DashboardController
+ * Managed by CTO - Central Intelligence Node
+ */
 class DashboardController extends Controller
 {
     public function index()
     {
-        /**
-         * Retrieve the business associated with the currently authenticated user.
-         * If no business is found, return a default dashboard view with zeroed statistics 
-         * and null business data to ensure the frontend renders gracefully.
-         */
-        $business = auth()->user()->business;
+        $user = auth()->user();
 
-        if (!$business) {
-            return Inertia::render('Dashboard', [
-                'stats' => [
-                    'total_bookings' => 0,
-                    'pending_bookings' => 0,
-                    'total_earnings' => '0.00'
-                ],
-                'business' => null
+        // ১. সুপার অ্যাডমিন লজিক (Global Oversight)
+        if ($user->role === 'super_admin') {
+            return Inertia::render('Admin/SuperAdminDashboard', [
+                'total_businesses' => Business::count(),
+                'total_users' => \App\Models\User::count(),
+                'total_revenue' => Booking::whereIn('status', ['confirmed', 'completed'])->join('services', 'bookings.service_id', '=', 'services.id')->sum('services.price'),
             ]);
         }
 
-        /**
-         * Calculate key performance indicators for the business dashboard.
-         * This includes the total count of bookings, the number of pending appointments,
-         * and the total generated revenue from confirmed or completed service bookings.
-         */
-        $totalBookings = $business->bookings()->count();
-        $pendingBookings = $business->bookings()->where('status', 'pending')->count();
+        // ২. বিজনেস ওনার লজিক (Business Operations)
+        if ($user->role === 'owner' || $user->business()->exists()) {
+            $business = $user->business;
+            if (!$business)
+                return redirect()->route('onboarding.index');
 
-        $totalEarnings = $business->bookings()
-            ->whereIn('status', ['confirmed', 'completed'])
-            ->join('services', 'bookings.service_id', '=', 'services.id')
-            ->sum('services.price');
+            return Inertia::render('Dashboard', [
+                'stats' => [
+                    'total_bookings' => $business->bookings()->count(),
+                    'pending_bookings' => $business->bookings()->where('status', 'pending')->count(),
+                    'total_earnings' => number_format($business->bookings()->whereIn('status', ['confirmed', 'completed'])->join('services', 'bookings.service_id', '=', 'services.id')->sum('services.price'), 2)
+                ],
+                'business' => $business
+            ]);
+        }
 
-        /**
-         * Return the dashboard view populated with computed statistics and business details.
-         * The business information, specifically the slug, is passed to the frontend to 
-         * facilitate dynamic URL generation for the public booking page.
-         */
-        return Inertia::render('Dashboard', [
-            'stats' => [
-                'total_bookings' => $totalBookings,
-                'pending_bookings' => $pendingBookings,
-                'total_earnings' => number_format($totalEarnings, 2)
-            ],
-            'business' => [
-                'name' => $business->name,
-                'slug' => $business->slug
-            ]
+        // ৩. কাস্টমার লজিক (Discovery & My Agenda) - আপনার রিকোয়ারমেন্ট অনুযায়ী
+        return Inertia::render('Customer/DiscoveryHub', [
+            'businesses' => Business::all()->map(function ($b) {
+                return [
+                    'name' => $b->name,
+                    'slug' => $b->slug,
+                    'description' => $b->description,
+                    'logo' => $b->logo ? "/storage/{$b->logo}" : null,
+                    'address' => $b->address
+                ];
+            }),
+            'my_upcoming' => $user->bookings()->with(['business', 'service'])->where('booking_date', '>=', Carbon::today())->latest()->take(3)->get()
         ]);
     }
 }

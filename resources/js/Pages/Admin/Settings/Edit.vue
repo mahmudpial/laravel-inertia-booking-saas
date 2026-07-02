@@ -1,274 +1,313 @@
 <script setup>
-import { ref, computed, watch, onUnmounted } from 'vue';
+/**
+ * Brand Studio v4.2.0-Alpha
+ * 
+ * CORE SYSTEMS:
+ * 1. Asset Synchronization: Real-time image processing and preview.
+ * 2. Identity Registry: Management of legal entity labels and HQ data.
+ * 3. Strategic Content: Integrated branding intelligence article.
+ * 
+ * @author Pial Mahmud (Lead Architect)
+ */
+
+import { ref } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 
-const props = defineProps({ services: Array });
+const props = defineProps({ business: Object });
 
-const isModalOpen = ref(false);
-const isEditMode = ref(false);
-const currentServiceId = ref(null);
-
-// PROFESSIONAL SCROLL LOCKING ENGINE
-watch(isModalOpen, (val) => {
-    if (val) {
-        document.body.style.overflow = 'hidden';
-        document.body.style.paddingRight = '0px'; // Prevents layout shift
-    } else {
-        document.body.style.overflow = '';
-    }
-});
-
-onUnmounted(() => {
-    document.body.style.overflow = '';
-});
+// Reactive Asset Previews (with null safety)
+const logoPreview = ref(props.business?.logo ? `/storage/${props.business.logo}` : null);
+const bannerPreview = ref(props.business?.banner ? `/storage/${props.business.banner}` : null);
 
 const form = useForm({
-    name: '',
-    price: '',
-    duration_minutes: '',
-    description: ''
+    _method: 'POST', // Enforced for multipart/form-data compatibility
+    name: props.business?.name || '',
+    description: props.business?.description || '',
+    address: props.business?.address || '',
+    logo: null,
+    banner: null
 });
 
-// Analytics Dashboard Logic
-const totalServices = computed(() => props.services?.length ?? 0);
-const avgPrice = computed(() => {
-    if (!props.services?.length) return '0.00';
-    const total = props.services.reduce((s, x) => s + parseFloat(x.price || 0), 0);
-    return (total / props.services.length).toFixed(2);
-});
-const avgDuration = computed(() => {
-    if (!props.services?.length) return 0;
-    return Math.round(props.services.reduce((s, x) => s + parseInt(x.duration_minutes || 0), 0) / props.services.length);
-});
-
-const openCreateModal = () => {
-    isEditMode.value = false;
-    form.reset();
-    isModalOpen.value = true;
-};
-
-const openEditModal = (service) => {
-    isEditMode.value = true;
-    currentServiceId.value = service.id;
-    form.name = service.name;
-    form.price = service.price;
-    form.duration_minutes = service.duration_minutes;
-    form.description = service.description;
-    isModalOpen.value = true;
-};
-
-const closeModal = () => {
-    isModalOpen.value = false;
-    form.reset();
-};
-
-const submit = () => {
-    const action = isEditMode.value
-        ? route('admin.services.update', currentServiceId.value)
-        : route('admin.services.store');
-
-    form[isEditMode.value ? 'put' : 'post'](action, {
-        onSuccess: () => closeModal(),
-        preserveScroll: true
-    });
-};
-
-const deleteService = (id) => {
-    if (confirm('Authorize permanent system removal?')) {
-        form.delete(route('admin.services.destroy', id));
+const handleFile = (e, key) => {
+    const file = e.target.files[0];
+    if (file) {
+        form[key] = file;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            if (key === 'logo') logoPreview.value = event.target.result;
+            if (key === 'banner') bannerPreview.value = event.target.result;
+        };
+        reader.readAsDataURL(file);
     }
+};
+
+const submitSettings = () => {
+    form.post(route('admin.settings.update'), {
+        preserveScroll: true,
+        forceFormData: true,
+        onSuccess: () => alert('✅ System Intelligence Synchronized.'),
+    });
 };
 </script>
 
 <template>
 
-    <Head title="Inventory Management" />
+    <Head title="Brand Studio | Strategic Identity Hub" />
 
     <AuthenticatedLayout>
-        <!-- BACKGROUND GRID LAYER -->
         <div
-            class="min-h-screen bg-[#F8FAFC] bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] pb-32 selection:bg-indigo-600 selection:text-white">
+            class="relative min-h-screen bg-[#FDFDFF] font-sans antialiased text-[#09090B] pb-48 selection:bg-indigo-600 selection:text-white">
 
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
-
-                <!-- EDITORIAL HEADER -->
-                <div class="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-8">
-                    <div class="animate-fadeIn">
-                        <div class="flex items-center gap-3 mb-4">
-                            <span class="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-ping"></span>
-                            <span class="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Inventory
-                                Monitoring</span>
-                        </div>
-                        <h1 class="text-5xl lg:text-7xl font-black text-[#11131A] tracking-tighter leading-none">
-                            Service <span class="text-slate-400 font-medium">SKUs.</span>
-                        </h1>
-                    </div>
-
-                    <button @click="openCreateModal"
-                        class="inline-flex items-center px-10 py-5 bg-[#11131A] text-white text-[10px] font-black uppercase tracking-[0.3em] rounded-2xl hover:bg-indigo-600 transition-all shadow-2xl active:scale-95">
-                        Initialize Unit
-                    </button>
+            <!-- ARCHITECTURAL BLUEPRINT BACKGROUND -->
+            <div class="fixed inset-0 z-0 pointer-events-none">
+                <div
+                    class="absolute inset-0 bg-[radial-gradient(#e5e7eb_1.5px,transparent_1.5px)] [background-size:32px_32px] opacity-40">
                 </div>
-
-                <!-- ANALYTICS HUB -->
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-16">
-                    <div class="bg-white border border-slate-200/60 p-10 rounded-[3rem] shadow-xl shadow-slate-200/40">
-                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-4">Live Inventory
-                        </p>
-                        <h3 class="text-4xl font-black text-[#11131A] tracking-tighter">{{ totalServices }}</h3>
-                    </div>
-                    <div class="bg-white border border-slate-200/60 p-10 rounded-[3rem] shadow-xl shadow-slate-200/40">
-                        <p class="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] mb-4">Market
-                            Valuation</p>
-                        <h3 class="text-4xl font-black text-[#11131A] tracking-tighter">${{ avgPrice }}</h3>
-                    </div>
-                    <div class="bg-white border border-slate-200/60 p-10 rounded-[3rem] shadow-xl shadow-slate-200/40">
-                        <p class="text-[10px] font-black text-indigo-500 uppercase tracking-[0.3em] mb-4">Average Span
-                        </p>
-                        <h3 class="text-4xl font-black text-[#11131A] tracking-tighter">{{ avgDuration }}m</h3>
-                    </div>
+                <div
+                    class="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]">
                 </div>
+            </div>
 
-                <!-- SKU LISTING -->
-                <div v-if="services.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    <div v-for="service in services" :key="service.id"
-                        class="group bg-white border border-slate-200/80 rounded-[3rem] p-10 transition-all duration-500 hover:-translate-y-2 hover:border-indigo-500/40 hover:shadow-2xl">
+            <div class="relative z-10 max-w-7xl mx-auto px-6 pt-16">
 
-                        <div class="flex justify-between items-start mb-12">
+                <!-- EDITORIAL HERO SECTION -->
+                <div class="grid grid-cols-1 xl:grid-cols-12 gap-16 mb-24 items-start">
+                    <div class="xl:col-span-5 space-y-8 animate-slideUp">
+                        <div class="flex items-center gap-3">
                             <div
-                                class="w-16 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-[#11131A] group-hover:text-white transition-all duration-500">
-                                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                                        d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                </svg>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">MSRP</p>
-                                <p class="text-2xl font-black text-[#11131A] tracking-tighter">${{ service.price }}</p>
+                                class="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 border border-indigo-100 rounded-full shadow-sm">
+                                <span class="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></span>
+                                <span class="text-[9px] font-black uppercase tracking-[0.3em] text-indigo-600">Identity
+                                    Protocol: Operational</span>
                             </div>
                         </div>
+                        <h1 class="text-8xl lg:text-9xl font-black tracking-tighter leading-[0.8] text-[#09090B]">
+                            Brand <br />
+                            <span class="text-indigo-600 font-medium text-5xl lg:text-8xl">Studio.</span>
+                        </h1>
+                        <p class="text-slate-400 font-bold uppercase tracking-[0.5em] text-[10px]">Registry Module
+                            v4.2.0-Alpha</p>
+                    </div>
 
-                        <h3
-                            class="text-2xl font-black text-[#11131A] group-hover:text-indigo-600 transition-colors mb-3 tracking-tight">
-                            {{ service.name }}</h3>
-                        <p class="text-sm text-slate-500 font-medium line-clamp-2 leading-relaxed h-10 mb-10">{{
-                            service.description || 'No system meta-description indexed.' }}</p>
-
-                        <div class="flex items-center justify-between pt-8 border-t border-slate-50">
-                            <span
-                                class="text-[9px] font-black text-[#11131A] uppercase tracking-[0.4em] bg-slate-100 px-4 py-2 rounded-lg">{{
-                                    service.duration_minutes }} Minutes</span>
-                            <div class="flex gap-2">
-                                <button @click="openEditModal(service)"
-                                    class="p-4 bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-white border border-transparent hover:border-slate-100 rounded-2xl transition-all shadow-sm"><svg
-                                        class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                    </svg></button>
-                                <button @click="deleteService(service.id)"
-                                    class="p-4 bg-slate-50 text-slate-400 hover:text-rose-600 hover:bg-white border border-transparent hover:border-slate-100 rounded-2xl transition-all shadow-sm"><svg
-                                        class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg></button>
+                    <!-- STUDIO INSIGHT ARTICLE (Logic Hub) -->
+                    <div
+                        class="xl:col-span-7 bg-[#09090B] rounded-[4rem] p-10 lg:p-14 text-white shadow-2xl relative overflow-hidden group border border-white/5 animate-fadeIn">
+                        <div
+                            class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,#4f46e522_0%,transparent_70%)]">
+                        </div>
+                        <div class="relative z-10 space-y-10">
+                            <div class="flex items-center justify-between">
+                                <p class="text-[10px] font-black text-indigo-400 uppercase tracking-[0.5em]">Strategic
+                                    Briefing</p>
+                                <span
+                                    class="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-3 py-1 bg-white/5 rounded-full">Secure
+                                    Transmission</span>
+                            </div>
+                            <h2 class="text-3xl lg:text-4xl font-black tracking-tighter uppercase leading-tight">The
+                                Architecture of <br /> Permanent Impressions.</h2>
+                            <article class="text-slate-400 text-lg leading-relaxed space-y-6 font-medium italic">
+                                <p>
+                                    In a high-frequency professional ecosystem, your **Brand Studio** acts as the
+                                    primary interface of trust. Research indicates that systematic visual consistency
+                                    can elevate client retention by up to **42%**.
+                                </p>
+                                <p>
+                                    Our aim is total data integrity. When a specialist node is activated within your
+                                    roster, the brand mark provides the legal and professional validation required for
+                                    global synchronization.
+                                </p>
+                            </article>
+                            <div class="flex items-center gap-4 pt-6 border-t border-white/10">
+                                <div
+                                    class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-[10px] font-black shadow-lg">
+                                    AI</div>
+                                <p
+                                    class="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-loose">
+                                    Data Security and Confidentiality is prioritized <br /> via the Node-Sentinel
+                                    Handshake.</p>
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <!-- OPERATIONAL WORKSPACE -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-16">
+
+                    <!-- NAVIGATION & KPI SIDEBAR -->
+                    <aside class="lg:col-span-3 space-y-10">
+                        <nav
+                            class="flex lg:flex-col overflow-x-auto lg:overflow-visible gap-4 pb-6 lg:pb-0 no-scrollbar sticky top-28">
+                            <div
+                                class="flex-shrink-0 px-8 py-5 bg-[#09090B] text-white text-[10px] font-black uppercase tracking-[0.4em] rounded-[1.5rem] shadow-2xl shadow-indigo-900/20 border border-white/5 cursor-default">
+                                Profile Identity
+                            </div>
+                            <div
+                                class="flex-shrink-0 px-8 py-5 bg-white border border-slate-200 text-slate-400 text-[10px] font-black uppercase tracking-[0.4em] rounded-[1.5rem] hover:bg-slate-50 transition-all cursor-pointer">
+                                Audit Log History
+                            </div>
+                        </nav>
+
+                        <!-- IDENTITY COMPLETION WIDGET -->
+                        <div
+                            class="hidden lg:block p-10 bg-white border border-slate-200 rounded-[3rem] shadow-xl relative overflow-hidden group">
+                            <p class="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] mb-8">System
+                                Readiness</p>
+                            <div class="space-y-8">
+                                <div v-for="(val, key) in { 'Brand Mark': 'Ready', 'Legal Label': 'Synced', 'Encryption': 'Active' }"
+                                    :key="key" class="flex justify-between items-center">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ key
+                                    }}</span>
+                                    <span class="text-[10px] font-black text-indigo-600 uppercase">{{ val }}</span>
+                                </div>
+                            </div>
+                            <div class="mt-10 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                                <div class="h-full bg-indigo-600 shadow-[0_0_10px_#4f46e5]" style="width: 100%"></div>
+                            </div>
+                        </div>
+                    </aside>
+
+                    <!-- BRANDING MAIN WORKSPACE -->
+                    <main class="lg:col-span-9 space-y-16 animate-fadeIn">
+
+                        <!-- MODULE 01: BANNER DEPLOYMENT -->
+                        <div
+                            class="bg-white border border-slate-200/60 rounded-[4rem] p-4 shadow-2xl shadow-slate-200/40 group relative">
+                            <div class="absolute top-10 left-10 z-20">
+                                <span
+                                    class="px-4 py-1.5 bg-[#09090B] text-white text-[9px] font-black uppercase tracking-[0.4em] rounded-full shadow-2xl">01.
+                                    Studio Backdrop</span>
+                            </div>
+                            <div
+                                class="relative aspect-[21/7] rounded-[3.5rem] bg-slate-50 overflow-hidden border-2 border-dashed border-slate-200 hover:border-indigo-400 transition-all duration-700 shadow-inner">
+                                <img v-if="bannerPreview" :src="bannerPreview"
+                                    class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
+                                <div v-else
+                                    class="absolute inset-0 flex flex-col items-center justify-center text-slate-300">
+                                    <svg class="w-16 h-16 mb-4 opacity-10" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <span class="text-[10px] font-black uppercase tracking-[0.5em]">Synchronize System
+                                        Banner Asset</span>
+                                </div>
+                                <div
+                                    class="absolute inset-0 bg-[#09090B]/60 opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-center justify-center backdrop-blur-sm cursor-pointer">
+                                    <div
+                                        class="px-10 py-5 bg-white text-[#09090B] rounded-full text-[10px] font-black uppercase tracking-[0.3em] shadow-2xl scale-90 group-hover:scale-100 transition-all">
+                                        Push New Asset</div>
+                                </div>
+                                <input type="file" @change="(e) => handleFile(e, 'banner')"
+                                    class="absolute inset-0 opacity-0 cursor-pointer" />
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-12 gap-12">
+                            <!-- MODULE 02: BRAND MARK -->
+                            <div
+                                class="md:col-span-5 bg-white border border-slate-200/60 rounded-[4rem] p-12 shadow-xl shadow-slate-200/30 flex flex-col items-center text-center group">
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em] mb-10">02.
+                                    Brand Identifier</p>
+                                <div
+                                    class="relative w-64 h-64 rounded-[3rem] bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden transition-all duration-700 group-hover:border-indigo-400 shadow-inner">
+                                    <img v-if="logoPreview" :src="logoPreview"
+                                        class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                                    <div v-else class="text-slate-200">
+                                        <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                                d="M12 4v16m8-8H4" />
+                                        </svg>
+                                    </div>
+                                    <div
+                                        class="absolute inset-0 bg-indigo-600/90 opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-center justify-center cursor-pointer">
+                                        <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                            <path d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                    </div>
+                                    <input type="file" @change="(e) => handleFile(e, 'logo')"
+                                        class="absolute inset-0 opacity-0 cursor-pointer" />
+                                </div>
+                                <p
+                                    class="mt-12 text-[10px] font-bold text-slate-300 uppercase tracking-[0.4em] leading-relaxed">
+                                    System Architecture <br /> Auto-Scaling 1:1</p>
+                            </div>
+
+                            <!-- MODULE 03: IDENTITY FIELDS -->
+                            <div
+                                class="md:col-span-7 bg-white border border-slate-200/60 rounded-[4rem] p-12 lg:p-14 shadow-xl shadow-slate-200/30 space-y-12 flex flex-col justify-center">
+                                <div class="group">
+                                    <label
+                                        class="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em] mb-4 block ml-1">Legal
+                                        Label</label>
+                                    <input v-model="form.name"
+                                        class="w-full bg-slate-50 border-none rounded-[2rem] p-8 text-2xl font-black text-[#09090B] focus:ring-2 focus:ring-indigo-500 transition-all shadow-inner tracking-tighter uppercase" />
+                                </div>
+                                <div class="group">
+                                    <label
+                                        class="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em] mb-4 block ml-1">Headquarters
+                                        Location</label>
+                                    <input v-model="form.address"
+                                        class="w-full bg-slate-50 border-none rounded-[2rem] p-8 text-xl font-bold text-[#09090B] focus:ring-2 focus:ring-indigo-500 transition-all shadow-inner tracking-tight" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- MODULE 04: BUSINESS BIO -->
+                        <div
+                            class="bg-white border border-slate-200/60 rounded-[4rem] p-12 lg:p-16 shadow-xl shadow-slate-200/30">
+                            <div class="flex items-center justify-between mb-8 px-2">
+                                <label
+                                    class="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em] block">Operational
+                                    Bio & Aim</label>
+                                <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Public
+                                    Intelligence Output</span>
+                            </div>
+                            <textarea v-model="form.description" rows="8"
+                                class="w-full bg-slate-50 border-none rounded-[3rem] p-10 text-xl font-medium text-[#09090B] focus:ring-2 focus:ring-indigo-500 transition-all resize-none shadow-inner leading-relaxed italic"
+                                placeholder="Introduce your business mission..."></textarea>
+                        </div>
+
+                        <!-- MODULE 05: TACTICAL DEPLOYMENT -->
+                        <div
+                            class="pt-20 border-t border-slate-100 flex flex-col xl:flex-row items-center justify-between gap-16">
+                            <div class="flex items-start gap-8 text-slate-400 max-w-lg">
+                                <div
+                                    class="p-5 bg-[#09090B] rounded-[2rem] text-indigo-500 shrink-0 shadow-2xl border border-white/10">
+                                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <p class="text-[13px] font-medium leading-relaxed italic uppercase tracking-wider">
+                                    Deploying updates will force-synchronize all brand assets across the SmartBooking
+                                    infrastructure. Data integrity is guaranteed via secure handshake protocols.</p>
+                            </div>
+
+                            <button @click="submitSettings" :disabled="form.processing"
+                                class="w-full md:w-auto px-20 py-8 bg-[#09090B] text-white text-[11px] font-black uppercase tracking-[0.6em] rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] hover:bg-indigo-600 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-10 group">
+                                <svg v-if="form.processing" class="h-6 w-6 animate-spin" viewBox="0 0 24 24"
+                                    fill="none">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                        stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                </svg>
+                                <span class="group-hover:translate-x-2 transition-transform duration-500">{{
+                                    form.processing ? 'SYNCHRONIZING...' : 'Authorize & Push Updates' }}</span>
+                            </button>
+                        </div>
+                    </main>
+                </div>
+
+                <div class="mt-60 text-center">
+                    <p class="text-[10px] font-black text-slate-300 uppercase tracking-[1.5em]">Command Infrastructure
+                        v4.2.0-Alpha.01</p>
                 </div>
             </div>
         </div>
-
-        <!-- TELEPORTED ULTRA-MODAL -->
-        <Teleport to="body">
-            <Transition enter-active-class="transition duration-500 ease-out" enter-from-class="opacity-0"
-                enter-to-class="opacity-100" leave-active-class="transition duration-300 ease-in"
-                leave-from-class="opacity-100" leave-to-class="opacity-0">
-                <div v-if="isModalOpen"
-                    class="fixed inset-0 z-[1000] overflow-y-auto px-4 py-6 sm:py-20 flex items-start justify-center no-scrollbar">
-
-                    <!-- DENSE OBSIDIAN BACKDROP -->
-                    <div class="fixed inset-0 bg-[#0A0B10]/95 backdrop-blur-2xl" @click="closeModal"></div>
-
-                    <!-- MODAL ENGINE CARD -->
-                    <div
-                        class="relative bg-white w-full max-w-2xl rounded-[3.5rem] shadow-[0_50px_100px_rgba(0,0,0,0.5)] overflow-hidden animate-slideUp z-10 mb-20 sm:my-auto">
-
-                        <!-- HEADER SECTOR -->
-                        <div class="p-10 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                            <div>
-                                <p class="text-[10px] font-black text-indigo-600 uppercase tracking-[0.4em] mb-2">{{
-                                    isEditMode ? 'Authorize Mutation' : 'Registry Entry' }}</p>
-                                <h2 class="text-3xl font-black text-[#11131A] tracking-tighter uppercase leading-none">
-                                    {{ isEditMode ? 'Modify SKU' : 'New Service' }}</h2>
-                            </div>
-                            <button @click="closeModal"
-                                class="w-14 h-14 flex items-center justify-center bg-white border border-slate-200 text-slate-400 hover:text-rose-600 rounded-[1.25rem] transition-all shadow-sm active:scale-90">
-                                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                                        d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        <!-- INPUT ENGINE -->
-                        <form @submit.prevent="submit" class="p-8 sm:p-12 space-y-12">
-                            <div class="group">
-                                <label
-                                    class="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-4 block ml-1">Official
-                                    Catalog Identity</label>
-                                <input v-model="form.name" type="text" required
-                                    placeholder="e.g. Master Consultant Session"
-                                    class="w-full bg-slate-50 border-none rounded-3xl p-6 text-base font-black text-[#11131A] focus:ring-2 focus:ring-indigo-500 transition-all shadow-inner" />
-                            </div>
-
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-10">
-                                <div>
-                                    <label
-                                        class="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-4 block ml-1">Valuation
-                                        (USD)</label>
-                                    <input v-model="form.price" type="number" step="0.01" required placeholder="149.00"
-                                        class="w-full bg-slate-50 border-none rounded-3xl p-6 text-base font-black text-[#11131A] focus:ring-2 focus:ring-indigo-500 transition-all shadow-inner" />
-                                </div>
-                                <div>
-                                    <label
-                                        class="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-4 block ml-1">Time
-                                        Quantization (Min)</label>
-                                    <input v-model="form.duration_minutes" type="number" required placeholder="60"
-                                        class="w-full bg-slate-50 border-none rounded-3xl p-6 text-base font-black text-[#11131A] focus:ring-2 focus:ring-indigo-500 transition-all shadow-inner" />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label
-                                    class="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-4 block ml-1">Operational
-                                    Logic (Description)</label>
-                                <textarea v-model="form.description" rows="4"
-                                    placeholder="Index the session deliverables..."
-                                    class="w-full bg-slate-50 border-none rounded-[2.5rem] p-8 text-base font-bold text-[#11131A] focus:ring-2 focus:ring-indigo-500 transition-all shadow-inner resize-none"></textarea>
-                            </div>
-
-                            <!-- ACTION SECTOR -->
-                            <div class="pt-10 flex flex-col sm:flex-row gap-5">
-                                <button type="button" @click="closeModal"
-                                    class="px-12 py-6 bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-[0.4em] rounded-[1.5rem] hover:bg-slate-200 transition-all active:scale-95">Discard</button>
-                                <button type="submit" :disabled="form.processing"
-                                    class="flex-1 py-6 bg-[#11131A] text-white text-[10px] font-black uppercase tracking-[0.4em] rounded-[1.5rem] hover:bg-indigo-600 transition-all shadow-2xl active:scale-95 disabled:opacity-50 flex items-center justify-center gap-4">
-                                    <svg v-if="form.processing" class="h-4 w-4 animate-spin text-white"
-                                        viewBox="0 0 24 24" fill="none">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                            stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                                    </svg>
-                                    <span>{{ form.processing ? 'Synchronizing...' : (isEditMode ? 'Push Update' :
-                                        'Initialize SKU') }}</span>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </Transition>
-        </Teleport>
     </AuthenticatedLayout>
 </template>
 
@@ -281,9 +320,12 @@ const deleteService = (id) => {
 :deep(h1),
 :deep(h2),
 :deep(h3),
-:deep(button),
-:deep(span) {
+:deep(h4),
+:deep(span),
+:deep(p),
+:deep(button) {
     font-family: 'Space Grotesk', sans-serif !important;
+    -webkit-font-smoothing: antialiased;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -295,39 +337,37 @@ const deleteService = (id) => {
     scrollbar-width: none;
 }
 
+.shadow-inner {
+    box-shadow: inset 0 4px 12px 0 rgba(0, 0, 0, 0.08);
+}
+
 @keyframes slideUp {
     from {
-        transform: translateY(80px);
         opacity: 0;
+        transform: translateY(40px);
     }
 
     to {
-        transform: translateY(0);
         opacity: 1;
+        transform: translateY(0);
     }
-}
-
-.animate-slideUp {
-    animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.shadow-inner {
-    box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
 }
 
 @keyframes fadeIn {
     from {
         opacity: 0;
-        transform: translateX(-20px);
     }
 
     to {
         opacity: 1;
-        transform: translateX(0);
     }
 }
 
+.animate-slideUp {
+    animation: slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 .animate-fadeIn {
-    animation: fadeIn 0.8s ease-out forwards;
+    animation: fadeIn 1.5s ease-out forwards;
 }
 </style>

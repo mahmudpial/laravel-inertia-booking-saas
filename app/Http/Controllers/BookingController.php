@@ -6,6 +6,7 @@ use App\Models\Business;
 use App\Models\Service;
 use App\Models\Availability;
 use App\Models\Booking;
+use App\Models\Staff;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -18,16 +19,23 @@ class BookingController extends Controller
 {
     /**
      * Public Booking Landing Page
+     * Updated to load Add-ons and Staff Roster
      */
     public function showBookingPage($slug)
     {
-        $business = Business::with('services')
+        $business = Business::with([
+            'services.addons',
+            'staff' => function ($query) {
+                $query->where('is_active', true);
+            }
+        ])
             ->where('slug', $slug)
             ->firstOrFail();
 
         return Inertia::render('Booking/Create', [
             'business' => $business,
-            'services' => $business->services
+            'services' => $business->services,
+            'staff' => $business->staff
         ]);
     }
 
@@ -36,19 +44,14 @@ class BookingController extends Controller
      */
     public function adminIndex()
     {
-        // ১. বর্তমানে লগইন করা ইউজারকে নিন
-        $user = Auth::user();
+        $business = Auth::user()->business;
 
-        // ২. রিলেশনশিপ লোড করুন (মডেলের রিলেশনশিপের উপর নির্ভর করে)
-        $business = \App\Models\Business::where('user_id', $user->id)->first();
-
-        // ৩. যদি বিজনেস না থাকে, তবে ড্যাশবোর্ডে ফেরত পাঠান
         if (!$business) {
-            return redirect()->route('dashboard')->with('error', 'আপনার বিজনেস প্রোফাইল এখনো তৈরি হয়নি। অনুগ্রহ করে আগে সেটি সম্পন্ন করুন।');
+            return redirect()->route('onboarding.index');
         }
 
         $bookings = $business->bookings()
-            ->with(['user', 'service'])
+            ->with(['user', 'service', 'staff', 'addons'])
             ->latest()
             ->get();
 
@@ -56,30 +59,59 @@ class BookingController extends Controller
             'bookings' => $bookings
         ]);
     }
+
     /**
-     * Update Booking Status
+     * Update Booking Status & Schedule (Calendar Sync)
      */
     public function updateStatus(Request $request, $id)
     {
-        $request->validate([
-            'status' => 'required|in:pending,confirmed,canceled,completed'
+        $business = Auth::user()->business;
+
+        $validated = $request->validate([
+            'status' => 'nullable|in:pending,confirmed,canceled,completed',
+            'booking_date' => 'nullable|date',
+            'start_time' => 'nullable',
         ]);
 
-        $booking = Booking::where('business_id', Auth::user()->business->id)
-            ->with(['user', 'service'])
-            ->findOrFail($id);
+        $booking = Booking::where('business_id', $business->id)->findOrFail($id);
 
-        $booking->update(['status' => $request->status]);
+        // Handle Re-scheduling (Drag & Drop)
+        if ($request->filled('booking_date') && $request->filled('start_time')) {
+            $newStart = Carbon::parse($request->booking_date . ' ' . $request->start_time);
+            // Re-calculate end time based on original service duration
+            $newEnd = $newStart->copy()->addMinutes($booking->service->duration_minutes);
 
-        if ($booking->user) {
-            Mail::to($booking->user->email)->send(new BookingNotification($booking, 'customer'));
+            // Conflict Check: Check specifically for the assigned staff member
+            $hasConflict = Booking::where('business_id', $business->id)
+                ->where('id', '!=', $id)
+                ->where('staff_id', $booking->staff_id)
+                ->where('booking_date', $request->booking_date)
+                ->where('status', '!=', 'canceled')
+                ->where('start_time', '<', $newEnd->format('H:i:s'))
+                ->where('end_time', '>', $newStart->format('H:i:s'))
+                ->exists();
+
+            if ($hasConflict) {
+                return redirect()->back()->withErrors(['message' => 'Staff collision detected at the target window.']);
+            }
+
+            $booking->update([
+                'booking_date' => $request->booking_date,
+                'start_time' => $newStart->format('H:i:s'),
+                'end_time' => $newEnd->format('H:i:s'),
+            ]);
         }
 
-        return redirect()->back()->with('message', 'Booking status updated successfully!');
+        if ($request->filled('status')) {
+            $booking->update(['status' => $request->status]);
+        }
+
+        return redirect()->back()->with('message', 'Deployment Synchronized.');
     }
 
     /**
      * Dynamic Slot Generation
+     * Updated: Slots are now filtered by specific Staff Member
      */
     public function getAvailableSlots(Request $request)
     {
@@ -87,6 +119,7 @@ class BookingController extends Controller
             'business_id' => 'required|exists:businesses,id',
             'date' => 'required|date|after_or_equal:today',
             'service_id' => 'required|exists:services,id',
+            'staff_id' => 'required|exists:staff,id',
         ]);
 
         $date = Carbon::parse($validated['date']);
@@ -105,7 +138,9 @@ class BookingController extends Controller
         $startTime = Carbon::parse($validated['date'] . ' ' . $availability->start_time);
         $endTime = Carbon::parse($validated['date'] . ' ' . $availability->end_time);
 
+        // Fetch existing bookings ONLY for the selected staff member
         $existingBookings = Booking::where('business_id', $validated['business_id'])
+            ->where('staff_id', $validated['staff_id'])
             ->where('booking_date', $validated['date'])
             ->where('status', '!=', 'canceled')
             ->get();
@@ -113,14 +148,17 @@ class BookingController extends Controller
         while ($startTime->copy()->addMinutes($duration)->lte($endTime)) {
             $slotEnd = $startTime->copy()->addMinutes($duration);
 
-            $isBooked = $existingBookings->contains(function ($booking) use ($startTime, $slotEnd) {
-                $bStart = Carbon::parse($booking->start_time);
-                $bEnd = Carbon::parse($booking->end_time);
+            $isBooked = $existingBookings->contains(function ($b) use ($startTime, $slotEnd) {
+                $bStart = Carbon::parse($b->start_time);
+                $bEnd = Carbon::parse($b->end_time);
                 return ($startTime < $bEnd && $slotEnd > $bStart);
             });
 
             if (!$isBooked) {
-                $slots[] = ['time' => $startTime->format('H:i:s'), 'formatted' => $startTime->format('h:i A')];
+                $slots[] = [
+                    'time' => $startTime->format('H:i:s'),
+                    'formatted' => $startTime->format('h:i A')
+                ];
             }
             $startTime->addMinutes($duration);
         }
@@ -129,16 +167,20 @@ class BookingController extends Controller
     }
 
     /**
-     * Store Booking
+     * Store Public Booking
+     * Updated: Handles Staff ID and Add-on pivot syncing
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
             'business_id' => 'required|exists:businesses,id',
             'service_id' => 'required|exists:services,id',
+            'staff_id' => 'required|exists:staff,id',
+            'addon_ids' => 'nullable|array',
+            'addon_ids.*' => 'exists:service_addons,id',
             'booking_date' => 'required|date|after_or_equal:today',
             'start_time' => 'required',
-            'notes' => 'nullable|string|max:500'
+            'notes' => 'nullable|string|max:1000'
         ]);
 
         return DB::transaction(function () use ($validated) {
@@ -146,7 +188,9 @@ class BookingController extends Controller
             $start = Carbon::parse($validated['booking_date'] . ' ' . $validated['start_time']);
             $end = $start->copy()->addMinutes($service->duration_minutes);
 
+            // Double check for staff collision before final commit
             $conflict = Booking::where('business_id', $validated['business_id'])
+                ->where('staff_id', $validated['staff_id'])
                 ->where('booking_date', $validated['booking_date'])
                 ->where('status', '!=', 'canceled')
                 ->where('start_time', '<', $end->format('H:i:s'))
@@ -154,13 +198,15 @@ class BookingController extends Controller
                 ->exists();
 
             if ($conflict) {
-                return redirect()->back()->withErrors(['time' => 'This slot is no longer available.']);
+                return redirect()->back()->withErrors(['time' => 'This window was just secured by another packet.']);
             }
 
+            // Create Primary Booking Record
             $booking = Booking::create([
                 'business_id' => $validated['business_id'],
                 'user_id' => Auth::id() ?? 1,
                 'service_id' => $validated['service_id'],
+                'staff_id' => $validated['staff_id'],
                 'booking_date' => $validated['booking_date'],
                 'start_time' => $start->format('H:i:s'),
                 'end_time' => $end->format('H:i:s'),
@@ -168,14 +214,24 @@ class BookingController extends Controller
                 'notes' => $validated['notes'],
             ]);
 
-            $booking->load(['business.user', 'service']);
-            Mail::to(Auth::user()->email ?? 'customer@example.com')->send(new BookingNotification($booking, 'customer'));
-
-            if ($booking->business->user) {
-                Mail::to($booking->business->user->email)->send(new BookingNotification($booking, 'admin'));
+            // Sync Enhancement Packets (Add-ons)
+            if (!empty($validated['addon_ids'])) {
+                $booking->addons()->attach($validated['addon_ids']);
             }
 
-            return redirect()->back()->with('message', 'Booking successful!');
+            $booking->load(['business.user', 'service', 'staff']);
+
+            // Technical Dispatch: Notifications
+            try {
+                Mail::to(Auth::user()->email)->send(new BookingNotification($booking, 'customer'));
+                if ($booking->business->user) {
+                    Mail::to($booking->business->user->email)->send(new BookingNotification($booking, 'admin'));
+                }
+            } catch (\Exception $e) {
+                report($e);
+            }
+
+            return redirect()->back()->with('message', 'Session Authorized and Indexed.');
         });
     }
 }

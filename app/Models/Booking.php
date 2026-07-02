@@ -29,4 +29,13 @@ class Booking extends Model
     {
         return $this->belongsTo(Service::class);
     }
+
+    public function staff()
+    {
+        return $this->belongsTo(Staff::class);
+    }
+    public function addons()
+    {
+        return $this->belongsToMany(ServiceAddon::class, 'booking_service_addon');
+    }
 }

@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Business extends Model
 {
-    protected $fillable = ['user_id', 'name', 'slug', 'logo', 'address', 'phone'];
+    protected $fillable = ['user_id', 'name', 'slug', 'logo', 'address', 'phone', 'status'];
 
 
     // ইউজারের সাথে রিলেশন
@@ -29,5 +29,10 @@ class Business extends Model
     public function bookings()
     {
         return $this->hasMany(Booking::class);
+    }
+
+    public function staff()
+    {
+        return $this->hasMany(Staff::class);
     }
 }

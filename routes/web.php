@@ -1,21 +1,36 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use App\Http\Controllers\ServiceController;
-use App\Http\Controllers\BookingController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\OnboardingController;
-use App\Http\Controllers\AvailabilityController;
-use App\Http\Controllers\BusinessSettingsController;
+use Illuminate\Foundation\Application;
 
 /**
- * Public Landing and Marketing Overview
- * Renders the primary application welcome screen with essential session status
- * for authorization and system engine properties.
+ * TACTICAL CONTROLLER REGISTRY
+ * --------------------------------------------------------------------------
+ * Managed by CTO - Central Intelligence Node
  */
+use App\Http\Controllers\{
+    ProfileController,
+    ServiceController,
+    BookingController,
+    DashboardController,
+    OnboardingController,
+    AvailabilityController,
+    BusinessSettingsController,
+    CalendarController,
+    StaffController,
+    CustomerDashboardController,
+    SuperAdminController
+};
+
+/*
+|--------------------------------------------------------------------------
+| 01. PUBLIC OPERATIONAL LAYER
+|--------------------------------------------------------------------------
+| High-level entry points accessible by unauthenticated traffic.
+| These nodes handle discovery, slot quantization, and packet dispatch.
+*/
+
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -25,73 +40,135 @@ Route::get('/', function () {
     ]);
 });
 
-/**
- * Authenticated Profile Tenancy Controls
- * Standard core account mutation layer protected via standard session authorization state layers.
+/** 
+ * Public Discovery: Customer-Facing Business Portals
  */
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-});
+Route::get('/b/{slug}', [BookingController::class, 'showBookingPage'])->name('booking.page');
 
-/**
- * Administrative SaaS Dashboard Back-Office Suite
- * Enforces authenticated multi-tenant restrictions for administrative operations,
- * configuration controls, and client arrangement tracking structures.
+/** 
+ * Public API: Dynamic Slot Quantization (Ajax/Axios)
  */
+Route::get('/api/available-slots', [BookingController::class, 'getAvailableSlots'])->name('api.slots');
+
+/** 
+ * Secure Transmission: Guest Booking Packet Dispatch
+ */
+Route::post('/booking/store', [BookingController::class, 'store'])->name('booking.store');
+
+
+/*
+|--------------------------------------------------------------------------
+| 02. AUTHENTICATED CORE INFRASTRUCTURE
+|--------------------------------------------------------------------------
+| Secured via Session Verification Handshake.
+| These routes are universal for all authenticated nodes.
+*/
+
 Route::middleware(['auth', 'verified'])->group(function () {
 
-    /**
-     * Tenant Business Onboarding Mechanism
-     * Restricts initial administrative authorization states until necessary organizational profiling data is compiled.
-     */
-    Route::get('/onboarding', [OnboardingController::class, 'index'])->name('onboarding.index');
-    Route::post('/onboarding', [OnboardingController::class, 'store'])->name('onboarding.store');
-
-    /**
-     * Centralized Real-Time Metric Performance Index
+    /** 
+     * Universal Command Hub (The Multi-Role Dashboard)
+     * Directs traffic to specific Hubs (Owner vs Customer) internally.
      */
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    /**
-     * Service Inventory Management Operations (CRUD)
+    /** 
+     * Account Identity Management
+     * Personal profile mutation logic.
      */
-    Route::get('/admin/services', [ServiceController::class, 'index'])->name('admin.services.index');
-    Route::post('/admin/services', [ServiceController::class, 'store'])->name('admin.services.store');
-    Route::put('/admin/services/{service}', [ServiceController::class, 'update'])->name('admin.services.update');
-    Route::delete('/admin/services/{service}', [ServiceController::class, 'destroy'])->name('admin.services.destroy');
+    Route::prefix('profile')->name('profile.')->group(function () {
+        Route::get('/', [ProfileController::class, 'edit'])->name('edit');
+        Route::patch('/', [ProfileController::class, 'update'])->name('update');
+        Route::delete('/', [ProfileController::class, 'destroy'])->middleware('password.confirm')->name('destroy');
+    });
 
-    /**
-     * Client Booking Matrix Overviews and Structural Status Updates
-     */
-    Route::get('/admin/bookings', [BookingController::class, 'adminIndex'])->name('admin.bookings.index');
-    Route::patch('/admin/bookings/{id}/status', [BookingController::class, 'updateStatus'])->name('admin.bookings.updateStatus');
+    /*
+    |----------------------------------------------------------------------
+    | 03. CLIENT PORTAL (The Agenda)
+    |----------------------------------------------------------------------
+    | Restricted modules for standard Customer nodes.
+    */
+    Route::prefix('my-agenda')->name('customer.')->group(function () {
+        Route::get('/', [CustomerDashboardController::class, 'index'])->name('dashboard');
+        Route::patch('/{id}/cancel', [CustomerDashboardController::class, 'cancel'])->name('bookings.cancel');
+    });
 
-    /**
-     * Operational Working Hours Matrix Configurations
-     */
-    Route::get('/admin/availability', [AvailabilityController::class, 'index'])->name('admin.availability.index');
-    Route::put('/admin/availability', [AvailabilityController::class, 'update'])->name('admin.availability.update');
+    /*
+    |----------------------------------------------------------------------
+    | 04. ADMINISTRATIVE SUITE (Business Owner Nodes)
+    |----------------------------------------------------------------------
+    | Enterprise modules protected by the 'admin' authorization alias.
+    | These routes manage a single business instance.
+    */
+    Route::middleware(['admin'])->group(function () {
 
-    // Business Profile and Branding Customization Layer
-    Route::get('/admin/settings', [BusinessSettingsController::class, 'edit'])->name('admin.settings.edit');
-    Route::post('/admin/settings', [BusinessSettingsController::class, 'update'])->name('admin.settings.update');
+        // --- Infrastructure Initialization ---
+        Route::prefix('onboarding')->name('onboarding.')->group(function () {
+            Route::get('/', [OnboardingController::class, 'index'])->name('index');
+            Route::post('/', [OnboardingController::class, 'store'])->name('store');
+        });
+
+        // --- Inventory & SKU Hub ---
+        Route::prefix('admin/services')->name('admin.services.')->group(function () {
+            Route::get('/', [ServiceController::class, 'index'])->name('index');
+            Route::post('/', [ServiceController::class, 'store'])->name('store');
+            Route::put('/{service}', [ServiceController::class, 'update'])->name('update');
+            Route::delete('/{service}', [ServiceController::class, 'destroy'])->name('destroy');
+        });
+
+        // --- Roster: Specialist Deployment ---
+        Route::prefix('admin/staff')->name('admin.staff.')->group(function () {
+            Route::get('/', [StaffController::class, 'index'])->name('index');
+            Route::post('/', [StaffController::class, 'store'])->name('store');
+            Route::delete('/{staff}', [StaffController::class, 'destroy'])->name('destroy');
+        });
+
+        // --- Operational Control: Queue & Timeline ---
+        Route::prefix('admin')->name('admin.')->group(function () {
+            Route::get('/bookings', [BookingController::class, 'adminIndex'])->name('bookings.index');
+            Route::patch('/bookings/{id}/status', [BookingController::class, 'updateStatus'])->name('bookings.updateStatus');
+            Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
+        });
+
+        // --- Temporal Sync: Availability Settings ---
+        Route::prefix('admin/availability')->name('admin.availability.')->group(function () {
+            Route::get('/', [AvailabilityController::class, 'index'])->name('index');
+            Route::put('/', [AvailabilityController::class, 'update'])->name('update');
+        });
+
+        // --- Brand Studio: Identity Sync ---
+        Route::prefix('admin/settings')->name('admin.settings.')->group(function () {
+            Route::get('/', [BusinessSettingsController::class, 'edit'])->name('edit');
+            Route::post('/', [BusinessSettingsController::class, 'update'])->middleware('password.confirm')->name('update');
+        });
+    });
+
+    /*
+    |----------------------------------------------------------------------
+    | 05. SOVEREIGN OVERLORD SUITE (Super Admin Node)
+    |----------------------------------------------------------------------
+    | Global oversight and cross-business infrastructure monitoring.
+    | Protected by the 'super_admin' sovereign handshake.
+    */
+    Route::middleware(['super_admin'])->prefix('system-control')->name('superadmin.')->group(function () {
+
+        // --- Platform Oversight (Main Hub) ---
+        Route::get('/oversight', [SuperAdminController::class, 'dashboard'])->name('dashboard');
+
+        // --- Entity Management (Node Ledger) ---
+        Route::get('/entities', [SuperAdminController::class, 'entities'])->name('entities.index');
+        Route::patch('/entities/{id}/toggle', [SuperAdminController::class, 'toggleNodeStatus'])->name('entities.toggle');
+
+        // --- Financial Intelligence ---
+        Route::get('/financials', [SuperAdminController::class, 'financials'])->name('financials');
+
+        // --- Security & Audit Logs ---
+        Route::get('/audit-ledger', [SuperAdminController::class, 'audit'])->name('audit');
+
+        // --- System Core Configuration ---
+        Route::get('/config', [SuperAdminController::class, 'config'])->name('config');
+    });
+
 });
-
-/**
- * Public Front-Facing Client Booking Sub-System
- * Globally exposed endpoints allowing unauthenticated customer traffic to lookup business timelines,
- * verify runtime available service intervals, and commit booking payloads.
- */
-
-// Route to display the business-specific public booking page layout using the unique slug identifier
-Route::get('/b/{slug}', [BookingController::class, 'showBookingPage'])->name('booking.page');
-
-// Endpoint utilized by Vue.js watchers to calculate open intervals on the selected date
-Route::get('/api/slots', [BookingController::class, 'getAvailableSlots'])->name('api.slots');
-
-// Secure endpoint to post client registration entries into the application ledger database
-Route::post('/booking/store', [BookingController::class, 'store'])->name('booking.store');
 
 require __DIR__ . '/auth.php';

@@ -36,15 +36,20 @@ class OnboardingController extends Controller
             'slug' => ['required', 'string', 'alpha_dash', 'max:255', 'unique:businesses,slug'],
         ]);
 
-        // ডাটাবেজ ট্রানজেকশন - বিজনেসের সাথে শিডিউল যেন একসাথে সেভ হয়
+        // business and default availability schedules make in a transaction
         DB::transaction(function () use ($request) {
             $business = Business::create([
-                'user_id' => $request->user()->id, // সরাসরি ইউজার অবজেক্ট থেকে আইডি নেওয়া
+                'user_id' => $request->user()->id, // default user id set
                 'name' => $request->name,
                 'slug' => Str::slug($request->slug),
             ]);
 
-            // ৭ দিনের ডিফল্ট শিডিউল তৈরি (০=রবি, ৬=শনি)
+            // Update user role to owner
+            $user = $request->user();
+            $user->role = 'owner';
+            $user->save();
+
+            // default availability schedules for each day of the week (0-6)
             for ($i = 0; $i <= 6; $i++) {
                 $business->availabilities()->create([
                     'day_of_week' => $i,

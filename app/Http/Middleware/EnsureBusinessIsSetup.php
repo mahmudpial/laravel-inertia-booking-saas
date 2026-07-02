@@ -10,9 +10,11 @@ class EnsureBusinessIsSetup
 {
     public function handle(Request $request, Closure $next): Response
     {
-        // ইউজার লগইন করা আছে কিন্তু তার কোনো বিজনেস ক্রিয়েট করা নেই
-        if (auth()->check() && !auth()->user()->business) {
-            // যদি সে অলরেডি অনবোর্ডিং পেজে যাওয়ার রাউটে না থাকে, তবে তাকে রিডাইরেক্ট করো
+        $user = auth()->user();
+
+        // Protocol: Only force onboarding if the user is an 'owner' and has no business.
+        // If they are a 'customer', they should be allowed to proceed to their dashboard.
+        if (auth()->check() && $user->role === 'owner' && !$user->business) {
             if (!$request->routeIs('onboarding.*')) {
                 return redirect()->route('onboarding.index');
             }

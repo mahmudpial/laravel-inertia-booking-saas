@@ -1,13 +1,26 @@
 <script setup>
+/**
+ * Node Initialization v4.2.0-Alpha
+ * 
+ * CORE SYSTEMS:
+ * 1. Identity Mapping: Auto-generation of unique URL identifiers.
+ * 2. Infrastructure Setup: First-time operational node deployment.
+ * 3. Validation Logic: Real-time redundancy checking.
+ * 
+ * @author Pial Mahmud (System Architect)
+ */
+
 import { useForm, Head } from '@inertiajs/vue3';
 import { watch } from 'vue';
+import ApplicationLogo from '@/Components/ApplicationLogo.vue';
+import InputError from '@/Components/InputError.vue';
 
 const form = useForm({
     name: '',
     slug: ''
 });
 
-// Auto-generate slug from business name
+// Logic: Auto-quantize slug from business name input
 watch(() => form.name, (newName) => {
     form.slug = newName
         .toLowerCase()
@@ -23,116 +36,167 @@ const submit = () => {
 
 <template>
 
-    <Head title="Setup Your Business" />
+    <Head title="Initialize Operational Node | SmartBooking" />
 
     <div
-        class="min-h-screen bg-gradient-to-br from-[#F5F6FA] via-white to-[#EEF0F6] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-        <!-- Decorative background element -->
-        <div class="absolute inset-0 overflow-hidden pointer-events-none">
-            <div class="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-indigo-100/30 blur-3xl"></div>
-            <div class="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-purple-100/20 blur-3xl"></div>
+        class="min-h-screen bg-[#FDFDFF] font-sans antialiased text-[#09090B] flex flex-col justify-center py-12 px-6 relative overflow-hidden selection:bg-indigo-600 selection:text-white">
+
+        <!-- ARCHITECTURAL BLUEPRINT BACKGROUND -->
+        <div class="fixed inset-0 z-0 pointer-events-none">
+            <div
+                class="absolute inset-0 bg-[radial-gradient(#e5e7eb_1.5px,transparent_1.5px)] [background-size:32px_32px] opacity-40">
+            </div>
+            <div
+                class="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]">
+            </div>
         </div>
 
-        <div class="relative z-10 sm:mx-auto max-w-md w-full">
-            <!-- Logo / Icon -->
-            <div class="flex justify-center">
+        <!-- LOGO ANCHOR -->
+        <div class="relative z-10 mb-12 animate-fadeIn flex justify-center">
+            <div
+                class="w-20 h-20 bg-[#09090B] rounded-[2.5rem] flex items-center justify-center shadow-2xl shadow-indigo-900/30 relative overflow-hidden">
+                <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,#4f46e533_0%,transparent_70%)]"></div>
+                <ApplicationLogo class="h-10 w-auto text-white relative z-10" />
+            </div>
+        </div>
+
+        <div class="relative z-10 sm:mx-auto max-w-xl w-full space-y-12">
+            <!-- EDITORIAL HEADER -->
+            <div class="text-center animate-slideUp">
                 <div
-                    class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25">
-                    <svg class="h-8 w-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2">
-                        <rect x="3" y="4" width="18" height="16" rx="2" stroke-linecap="round" />
-                        <path d="M8 10h8M8 14h5" stroke-linecap="round" />
-                        <path d="M16 8v8" stroke-linecap="round" stroke-dasharray="2 2" />
-                    </svg>
+                    class="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 border border-indigo-100 rounded-full mb-6">
+                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></span>
+                    <span class="text-[9px] font-black uppercase tracking-[0.3em] text-indigo-600">Protocol:
+                        Node_Initialization</span>
                 </div>
+                <h2 class="text-6xl lg:text-7xl font-black tracking-tighter uppercase leading-none text-[#09090B]">
+                    Deploy <br /> <span class="text-indigo-600 font-medium">Workspace.</span>
+                </h2>
+                <p class="mt-6 text-slate-400 font-bold uppercase tracking-widest text-xs">
+                    Define your operational identity on the booking grid.
+                </p>
             </div>
 
-            <h2 class="mt-6 text-center font-display text-3xl font-bold tracking-tight text-[#11131A]">
-                Welcome to Smart Booking
-            </h2>
-            <p class="mt-2 text-center text-sm text-[#6B7280]">
-                Let’s set up your business workspace in just a few steps.
-            </p>
-        </div>
-
-        <div class="relative z-10 mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+            <!-- TACTICAL SETUP POD -->
             <div
-                class="bg-white/80 backdrop-blur-sm py-8 px-6 shadow-xl shadow-indigo-500/5 sm:rounded-2xl sm:px-10 border border-white/30">
+                class="bg-white border border-slate-200/60 rounded-[4rem] p-10 lg:p-14 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.12)] animate-fadeIn">
 
-                <form @submit.prevent="submit" class="space-y-6">
+                <form @submit.prevent="submit" class="space-y-10">
 
-                    <!-- Business Name -->
-                    <div>
-                        <label class="block text-sm font-semibold text-[#11131A]">
-                            Business Name
-                            <span class="text-rose-500">*</span>
-                        </label>
-                        <div class="mt-1.5 relative">
+                    <!-- MODULE 01: LEGAL LABEL -->
+                    <div class="group">
+                        <label
+                            class="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-4 block ml-1">Legal
+                            Identity Label</label>
+                        <div class="relative">
                             <div
-                                class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#9CA3AF]">
-                                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd"
-                                        d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 1a7 7 0 00-4.95 11.95l1.06-1.06A5 5 0 1110 5a5 5 0 11-3.89 8.89L5.05 14.95A7 7 0 0010 3z" />
+                                class="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-slate-300 group-focus-within:text-indigo-500 transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                 </svg>
                             </div>
-                            <input v-model="form.name" type="text" required placeholder="e.g. Bella Vita Salon"
-                                class="block w-full rounded-xl border border-[#E7E9F2] bg-white/70 py-2.5 pl-10 pr-4 text-sm text-[#11131A] placeholder-[#9CA3AF] shadow-sm transition-all focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 hover:border-[#D5D9E5]">
+                            <input v-model="form.name" type="text" required placeholder="E.G. BELLA VITA STUDIO"
+                                class="block w-full rounded-[2rem] bg-slate-50 border-none py-6 pl-14 pr-8 text-lg font-black text-[#09090B] placeholder:text-slate-200 focus:ring-2 focus:ring-indigo-500 transition-all shadow-inner uppercase tracking-tighter">
                         </div>
-                        <p v-if="form.errors.name" class="mt-1.5 text-xs font-medium text-rose-500">{{ form.errors.name
-                        }}</p>
+                        <InputError class="mt-3 ml-2" :message="form.errors.name" />
                     </div>
 
-                    <!-- Booking URL Slug -->
-                    <div>
-                        <label class="block text-sm font-semibold text-[#11131A]">
-                            Booking URL Slug
-                            <span class="text-rose-500">*</span>
-                        </label>
-                        <div class="mt-1.5 flex rounded-xl shadow-sm">
+                    <!-- MODULE 02: URL QUANTIZATION -->
+                    <div class="group">
+                        <label
+                            class="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-4 block ml-1">Communication
+                            Path (Slug)</label>
+                        <div
+                            class="flex items-center rounded-[2rem] bg-slate-50 overflow-hidden shadow-inner focus-within:ring-2 focus-within:ring-indigo-500 transition-all">
                             <span
-                                class="inline-flex items-center rounded-l-xl border border-r-0 border-[#E7E9F2] bg-[#F8F9FC] px-3 text-sm text-[#6B7280]">
-                                /b/
+                                class="pl-8 pr-4 py-6 text-base font-black text-slate-300 uppercase tracking-widest border-r border-slate-100">
+                                /B/
                             </span>
-                            <input v-model="form.slug" type="text" required placeholder="bella-vita-salon"
-                                class="flex-1 block w-full rounded-r-xl border border-[#E7E9F2] bg-white/70 py-2.5 px-3 text-sm text-[#11131A] placeholder-[#9CA3AF] shadow-sm transition-all focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 hover:border-[#D5D9E5]">
+                            <input v-model="form.slug" type="text" required placeholder="identifier-node"
+                                class="flex-1 bg-transparent border-none py-6 px-6 text-lg font-black text-indigo-600 placeholder:text-slate-200 focus:ring-0 uppercase tracking-tighter">
                         </div>
-                        <p class="mt-1.5 text-xs text-[#9CA3AF]">
-                            Your customers will book from <span
-                                class="font-mono font-medium text-indigo-600">yourdomain.com/b/{{ form.slug ||
-                                    'your-slug' }}</span>
+                        <p
+                            class="mt-4 px-6 text-[9px] font-bold text-slate-300 uppercase tracking-[0.2em] leading-relaxed">
+                            Endpoint: <span class="text-indigo-400">smartbooking.com/b/{{ form.slug || 'node-identifier'
+                            }}</span>
                         </p>
-                        <p v-if="form.errors.slug" class="mt-1.5 text-xs font-medium text-rose-500">{{ form.errors.slug
-                        }}</p>
+                        <InputError class="mt-3 ml-2" :message="form.errors.slug" />
                     </div>
 
-                    <!-- Submit -->
-                    <div class="pt-2">
+                    <!-- DEPLOYMENT TRIGGER -->
+                    <div class="pt-6">
                         <button type="submit" :disabled="form.processing"
-                            class="w-full flex items-center justify-center gap-2 rounded-xl bg-[#11131A] py-3 text-sm font-semibold text-white shadow-lg shadow-[#11131A]/10 transition-all duration-200 hover:shadow-xl hover:shadow-[#11131A]/20 hover:bg-[#2A2D3A] active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed">
+                            class="w-full flex items-center justify-center gap-6 rounded-[2rem] bg-[#09090B] py-8 text-[11px] font-black uppercase tracking-[0.5em] text-white shadow-[0_20px_50px_rgba(0,0,0,0.2)] hover:bg-indigo-600 transition-all active:scale-95 disabled:opacity-50 group">
                             <svg v-if="form.processing" class="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
                                     stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                             </svg>
-                            {{ form.processing ? 'Setting up…' : 'Complete Setup & Enter Dashboard' }}
+                            <span class="group-hover:translate-x-2 transition-transform duration-500">{{ form.processing
+                                ? 'SYNCHRONIZING...' : 'Initialize Operational Node' }}</span>
                         </button>
                     </div>
 
-                    <!-- Footer note -->
-                    <p class="text-center text-[11px] text-[#9CA3AF]">
-                        You can change these settings later in your dashboard.
+                    <p class="text-center text-[9px] font-black text-slate-300 uppercase tracking-[0.5em]">
+                        Global asset synchronization will follow initialization.
                     </p>
                 </form>
 
             </div>
         </div>
+
+        <!-- FOOTER INFRASTRUCTURE TAG -->
+        <div class="mt-20 text-center relative z-10">
+            <p class="text-[10px] font-black text-slate-300 uppercase tracking-[1em]">Operational Infrastructure v4.2.0
+            </p>
+        </div>
     </div>
 </template>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap');
 
-.font-display {
-    font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+:deep(body),
+:deep(input),
+:deep(h2),
+:deep(p),
+:deep(span) {
+    font-family: 'Space Grotesk', sans-serif !important;
+    -webkit-font-smoothing: antialiased;
+}
+
+.shadow-inner {
+    box-shadow: inset 0 2px 8px 0 rgba(0, 0, 0, 0.06);
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(40px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.animate-slideUp {
+    animation: slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fadeIn {
+    animation: fadeIn 1.5s ease-out forwards;
 }
 </style>

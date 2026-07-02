@@ -1,6 +1,18 @@
 <script setup>
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+/**
+ * Operational Timeline v4.2.0-Alpha
+ * 
+ * CORE SYSTEMS:
+ * 1. Temporal Quantization: Management of daily operational windows.
+ * 2. Status Synchronization: Real-time update of public booking intervals.
+ * 3. Node Intelligence: Integrated briefing on scheduling logistics.
+ * 
+ * @author Pial Mahmud (System Architect)
+ */
+
+import { ref } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 
 const props = defineProps({
     availabilities: Array
@@ -15,169 +27,232 @@ const form = useForm({
 const submit = () => {
     form.put(route('admin.availability.update'), {
         preserveScroll: true,
-        onSuccess: () => {
-            // High-end notification logic would trigger here
-            alert('📅 Operational timeline synchronized.');
-        }
+        onSuccess: () => alert('✅ Operational Timeline Synchronized.'),
     });
 };
 </script>
 
 <template>
 
-    <Head title="Operational Hours Control" />
+    <Head title="Operational Timeline | Business Hours" />
 
     <AuthenticatedLayout>
-        <!-- SIGNATURE RADIAL DOT BACKGROUND -->
         <div
-            class="min-h-screen bg-[#F8FAFC] bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] pb-32">
+            class="relative min-h-screen bg-[#FDFDFF] font-sans antialiased text-[#09090B] pb-48 selection:bg-indigo-600 selection:text-white">
 
-            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
+            <!-- ARCHITECTURAL BLUEPRINT BACKGROUND -->
+            <div class="fixed inset-0 z-0 pointer-events-none">
+                <div
+                    class="absolute inset-0 bg-[radial-gradient(#e5e7eb_1.5px,transparent_1.5px)] [background-size:32px_32px] opacity-40">
+                </div>
+                <div
+                    class="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]">
+                </div>
+            </div>
 
-                <!-- EDITORIAL PAGE HEADER -->
-                <div class="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-8">
-                    <div>
-                        <div class="flex items-center gap-2.5 mb-4">
-                            <span class="w-2 h-2 rounded-full bg-indigo-600 animate-ping"></span>
-                            <span class="text-[10px] font-extrabold uppercase tracking-[0.3em] text-slate-400">Schedule
-                                Intelligence</span>
+            <div class="relative z-10 max-w-7xl mx-auto px-6 pt-16">
+
+                <!-- =========================================================
+                     EDITORIAL HERO SECTION
+                     ========================================================= -->
+                <div class="grid grid-cols-1 xl:grid-cols-12 gap-16 mb-24 items-start">
+                    <div class="xl:col-span-5 space-y-8 animate-slideUp">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 border border-indigo-100 rounded-full shadow-sm">
+                                <span class="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></span>
+                                <span
+                                    class="text-[9px] font-black uppercase tracking-[0.3em] text-indigo-600">Operational
+                                    Matrix Active</span>
+                            </div>
                         </div>
-                        <h1 class="text-5xl lg:text-7xl font-black text-[#11131A] tracking-tighter leading-none">
-                            Business <span class="text-slate-400">Hours.</span>
+                        <h1 class="text-8xl lg:text-9xl font-black tracking-tighter leading-[0.8] text-[#09090B]">
+                            Business <br />
+                            <span class="text-indigo-600 font-medium text-5xl lg:text-8xl">Hours.</span>
                         </h1>
-                        <p class="text-slate-500 font-medium mt-6 max-w-lg leading-relaxed">
-                            Synchronize your professional availability. These windows define when your digital
-                            storefront is open for new appointments.
-                        </p>
+                        <p class="text-slate-400 font-bold uppercase tracking-[0.5em] text-[10px]">Temporal Control
+                            v4.2.0-Alpha</p>
                     </div>
 
-                    <div class="flex flex-col items-end">
-                        <span class="text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] mb-2">System
-                            Status</span>
+                    <!-- TEMPORAL INTELLIGENCE ARTICLE -->
+                    <div
+                        class="xl:col-span-7 bg-[#09090B] rounded-[4rem] p-10 lg:p-14 text-white shadow-2xl relative overflow-hidden group border border-white/5 animate-fadeIn text-left">
                         <div
-                            class="px-5 py-2 bg-white border border-slate-200 rounded-2xl shadow-sm flex items-center gap-3">
-                            <span
-                                class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></span>
-                            <span class="text-xs font-black text-[#11131A] uppercase tracking-widest">Online</span>
+                            class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,#4f46e522_0%,transparent_70%)]">
+                        </div>
+                        <div class="relative z-10 space-y-10">
+                            <div class="flex items-center justify-between">
+                                <p class="text-[10px] font-black text-indigo-400 uppercase tracking-[0.5em]">Scheduling
+                                    Intelligence</p>
+                                <span
+                                    class="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-3 py-1 bg-white/5 rounded-full">Unit
+                                    Logic v4.2</span>
+                            </div>
+                            <h2 class="text-3xl lg:text-4xl font-black tracking-tighter uppercase leading-tight">The
+                                Chronos Protocol: <br /> Engineering Time Quantization.</h2>
+                            <article class="text-slate-400 text-lg leading-relaxed space-y-6 font-medium italic">
+                                <p>
+                                    In a high-frequency professional ecosystem, **Time** is the primary resource.
+                                    Defining precise operational windows allows our engine to calculate and deploy
+                                    session packets with surgical accuracy.
+                                </p>
+                                <p>
+                                    Synchronizing your timeline ensures that specialist nodes are only active when the
+                                    physical headquarters is operational. This prevents logistical friction and
+                                    optimizes the global dispatch cycle.
+                                </p>
+                            </article>
+                            <div class="flex items-center gap-4 pt-6 border-t border-white/10">
+                                <div
+                                    class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-[10px] font-black shadow-lg">
+                                    TS</div>
+                                <p
+                                    class="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-loose">
+                                    Confidentiality of operational data is secured <br /> via the Node-Sentinel
+                                    framework.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- MAIN TIMELINE CONTROL -->
-                <div
-                    class="bg-white/80 backdrop-blur-xl border border-slate-200/60 rounded-[3.5rem] shadow-2xl shadow-slate-200/50 overflow-hidden">
-                    <div class="px-10 py-8 border-b border-slate-100 bg-slate-50/30 flex justify-between items-center">
-                        <h3 class="text-xs font-black text-[#11131A] uppercase tracking-[0.3em]">Weekly Operational
-                            Cycle</h3>
-                        <div class="flex gap-1">
-                            <div v-for="i in 7" :key="i" class="w-1.5 h-1.5 rounded-full bg-indigo-200"></div>
+                <!-- =========================================================
+                     OPERATIONAL WORKSPACE
+                     ========================================================= -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-16">
+
+                    <!-- NAVIGATION & UPTIME SIDEBAR -->
+                    <aside class="lg:col-span-3 space-y-10">
+                        <nav
+                            class="flex lg:flex-col overflow-x-auto lg:overflow-visible gap-4 pb-6 lg:pb-0 no-scrollbar sticky top-28">
+                            <div
+                                class="flex-shrink-0 px-8 py-5 bg-[#09090B] text-white text-[10px] font-black uppercase tracking-[0.4em] rounded-[1.5rem] shadow-2xl shadow-indigo-900/20 border border-white/5 cursor-default">
+                                Weekly Schedule
+                            </div>
+                            <div
+                                class="flex-shrink-0 px-8 py-5 bg-white border border-slate-200 text-slate-400 text-[10px] font-black uppercase tracking-[0.4em] rounded-[1.5rem] hover:bg-slate-50 transition-all cursor-pointer text-center">
+                                Custom Overrides
+                            </div>
+                        </nav>
+
+                        <!-- OPERATIONAL HEALTH WIDGET -->
+                        <div
+                            class="hidden lg:block p-10 bg-white border border-slate-200 rounded-[3rem] shadow-xl relative overflow-hidden group">
+                            <p class="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] mb-8">Uptime
+                                Integrity</p>
+                            <div class="space-y-8">
+                                <div v-for="(val, key) in { 'Node Sync': 'Active', 'Operational': 'Synced', 'Encryption': 'Verified' }"
+                                    :key="key" class="flex justify-between items-center">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ key
+                                    }}</span>
+                                    <span class="text-[10px] font-black text-indigo-600 uppercase">{{ val }}</span>
+                                </div>
+                            </div>
+                            <div class="mt-10 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                                <div class="h-full bg-indigo-600 shadow-[0_0_10px_#4f46e5]" style="width: 100%"></div>
+                            </div>
                         </div>
-                    </div>
+                    </aside>
 
-                    <form @submit.prevent="submit" class="p-6 sm:p-10 space-y-4">
-
-                        <!-- DAY STRIP MODULE -->
+                    <!-- TIMELINE STRIPS -->
+                    <main class="lg:col-span-9 space-y-4 animate-fadeIn">
                         <div v-for="(item, index) in form.availabilities" :key="item.id" :class="[
-                            'group flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 rounded-[2.5rem] border transition-all duration-500',
+                            'group flex flex-col md:flex-row md:items-center justify-between gap-8 p-8 rounded-[3rem] border transition-all duration-500',
                             item.is_open
-                                ? 'bg-white border-slate-100 hover:border-indigo-400 hover:shadow-[0_20px_50px_rgba(79,70,229,0.08)]'
+                                ? 'bg-white border-slate-200 shadow-xl hover:border-indigo-400 hover:shadow-indigo-500/5 hover:-translate-y-1'
                                 : 'bg-slate-50/50 border-transparent opacity-60 grayscale'
                         ]">
 
-                            <!-- Day Identity & Checkbox -->
-                            <div class="flex items-center gap-6 md:w-56">
+                            <!-- Day Identity Pod -->
+                            <div class="flex items-center gap-8 md:w-56 text-left">
                                 <div :class="[
-                                    'w-14 h-14 rounded-2xl flex items-center justify-center font-black text-sm transition-all duration-700',
-                                    item.is_open ? 'bg-[#11131A] text-white shadow-xl shadow-slate-900/20' : 'bg-slate-200 text-slate-400'
+                                    'w-16 h-14 rounded-2xl flex items-center justify-center font-black text-lg transition-all duration-700 shadow-inner border border-transparent',
+                                    item.is_open ? 'bg-[#09090B] text-white shadow-indigo-900/20 group-hover:bg-indigo-600' : 'bg-slate-200 text-slate-400'
                                 ]">
                                     {{ daysMap[item.day_of_week].slice(0, 2).toUpperCase() }}
                                 </div>
-                                <div>
-                                    <span class="text-lg font-black text-[#11131A] block">{{ daysMap[item.day_of_week]
-                                    }}</span>
-                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{
-                                        item.is_open ? 'Operational' : 'Closed' }}</p>
+                                <div class="min-w-0">
+                                    <h4
+                                        class="text-xl font-black text-[#09090B] tracking-tighter uppercase leading-none">
+                                        {{ daysMap[item.day_of_week] }}</h4>
+                                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mt-2">{{
+                                        item.is_open ? 'Operational' : 'Offline' }}</p>
                                 </div>
                             </div>
 
-                            <!-- Engineered Switch -->
+                            <!-- Tactical Toggle -->
                             <div class="flex items-center">
                                 <label class="relative inline-flex items-center cursor-pointer scale-110">
                                     <input type="checkbox" v-model="item.is_open" :true-value="1" :false-value="0"
                                         class="sr-only peer">
                                     <div
-                                        class="w-14 h-7 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-5 after:w-6 after:transition-all peer-checked:bg-indigo-600">
+                                        class="w-14 h-8 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-indigo-600 shadow-inner">
                                     </div>
                                 </label>
                             </div>
 
-                            <!-- Time Selector Pod -->
+                            <!-- Time Selector Slots -->
                             <div v-if="item.is_open"
-                                class="flex items-center gap-4 bg-slate-50/80 p-2.5 rounded-[1.5rem] border border-slate-100">
-                                <div class="relative group/input">
-                                    <input type="time" v-model="item.start_time" required
-                                        class="bg-white border-none rounded-xl px-5 py-3 text-sm font-black text-[#11131A] focus:ring-2 focus:ring-indigo-500 transition-all shadow-sm">
-                                </div>
+                                class="flex items-center gap-4 bg-slate-50 p-2 rounded-[2rem] border border-slate-100 shadow-inner">
+                                <input type="time" v-model="item.start_time" required
+                                    class="bg-white border-none rounded-[1.25rem] px-6 py-4 text-base font-black text-[#09090B] focus:ring-2 focus:ring-indigo-500 transition-all shadow-sm" />
 
                                 <div
-                                    class="w-8 h-8 flex items-center justify-center rounded-full bg-white shadow-sm border border-slate-100">
-                                    <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor"
+                                    class="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-sm border border-slate-100">
+                                    <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor"
                                         viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
                                             d="M17 8l4 4m0 0l-4 4m4-4H3" />
                                     </svg>
                                 </div>
 
-                                <div class="relative group/input">
-                                    <input type="time" v-model="item.end_time" required
-                                        class="bg-white border-none rounded-xl px-5 py-3 text-sm font-black text-[#11131A] focus:ring-2 focus:ring-indigo-500 transition-all shadow-sm">
-                                </div>
+                                <input type="time" v-model="item.end_time" required
+                                    class="bg-white border-none rounded-[1.25rem] px-6 py-4 text-base font-black text-[#09090B] focus:ring-2 focus:ring-indigo-500 transition-all shadow-sm" />
                             </div>
 
-                            <!-- Offline Placeholder -->
-                            <div v-else class="flex-1 flex justify-center md:justify-end">
-                                <div class="px-6 py-3 bg-slate-100 rounded-2xl border border-slate-200">
-                                    <span
-                                        class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Bookings
-                                        Disabled</span>
-                                </div>
+                            <!-- Offline Label -->
+                            <div v-else class="flex-1 flex justify-center md:justify-end pr-10">
+                                <span
+                                    class="text-[10px] font-black text-slate-300 uppercase tracking-[0.4em] italic leading-none">System
+                                    Offline</span>
                             </div>
                         </div>
 
-                        <!-- ACTION FOOTER -->
+                        <!-- TACTICAL DEPLOYMENT ZONE -->
                         <div
-                            class="mt-12 pt-10 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-8">
-                            <div class="flex items-start gap-4 text-slate-400 max-w-sm">
-                                <div class="p-2 bg-indigo-50 rounded-xl text-indigo-500 shrink-0">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            class="pt-20 border-t border-slate-100 flex flex-col xl:flex-row items-center justify-between gap-16">
+                            <div class="flex items-start gap-8 text-slate-400 max-w-lg text-left">
+                                <div
+                                    class="p-5 bg-[#09090B] rounded-[2rem] text-indigo-500 shrink-0 shadow-2xl border border-white/10">
+                                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                 </div>
-                                <p class="text-xs font-medium leading-relaxed italic">Synchronizing will update your
-                                    public booking slots. All active customer sessions will remain unchanged.</p>
+                                <p class="text-[13px] font-medium leading-relaxed italic uppercase tracking-wider">
+                                    Deploying updates to the operational timeline will force-quantize all available
+                                    booking segments. Existing validated reservations remain immutable.</p>
                             </div>
 
-                            <button type="submit" :disabled="form.processing"
-                                class="w-full sm:w-auto px-12 py-5 bg-[#11131A] text-white text-[10px] font-black uppercase tracking-[0.3em] rounded-[1.5rem] hover:bg-indigo-600 transition-all shadow-2xl shadow-indigo-900/20 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-4">
-                                <svg v-if="form.processing" class="h-4 w-4 animate-spin" viewBox="0 0 24 24"
+                            <button @click="submit" :disabled="form.processing"
+                                class="w-full md:w-auto px-20 py-8 bg-[#09090B] text-white text-[11px] font-black uppercase tracking-[0.6em] rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] hover:bg-indigo-600 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-10 group">
+                                <svg v-if="form.processing" class="h-6 w-6 animate-spin" viewBox="0 0 24 24"
                                     fill="none">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
                                         stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                                 </svg>
-                                <span>{{ form.processing ? 'Synchronizing...' : 'Push Changes' }}</span>
+                                <span class="group-hover:translate-x-2 transition-transform duration-500">Authorize &
+                                    Sync Matrix</span>
                             </button>
                         </div>
-                    </form>
+                    </main>
                 </div>
 
                 <!-- AESTHETIC FOOTER TAG -->
-                <div class="mt-16 text-center">
-                    <p class="text-[10px] font-black text-slate-300 uppercase tracking-[0.5em]">Inventory System v2.4.0
-                    </p>
+                <div class="mt-60 text-center">
+                    <p class="text-[10px] font-black text-slate-300 uppercase tracking-[1.5em]">Temporal Infrastructure
+                        v4.2.0-Alpha.01</p>
                 </div>
-
             </div>
         </div>
     </AuthenticatedLayout>
@@ -190,21 +265,13 @@ const submit = () => {
 :deep(input),
 :deep(h1),
 :deep(h2),
-:deep(h3) {
+:deep(h3),
+:deep(h4),
+:deep(span),
+:deep(p),
+:deep(button) {
     font-family: 'Space Grotesk', sans-serif !important;
-}
-
-/* Elegant time input customization */
-input[type="time"]::-webkit-calendar-picker-indicator {
-    filter: invert(0.2) sepia(1) saturate(5) hue-rotate(220deg);
-    cursor: pointer;
-    width: 18px;
-    height: 18px;
-}
-
-/* Smooth list transition for active rows */
-.group {
-    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    -webkit-font-smoothing: antialiased;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -214,5 +281,46 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+}
+
+.shadow-inner {
+    box-shadow: inset 0 4px 12px 0 rgba(0, 0, 0, 0.08);
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(40px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.animate-slideUp {
+    animation: slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fadeIn {
+    animation: fadeIn 1.5s ease-out forwards;
+}
+
+input[type="time"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.2) sepia(1) saturate(5) hue-rotate(220deg);
+    cursor: pointer;
+    width: 22px;
+    height: 22px;
 }
 </style>
