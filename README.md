@@ -24,6 +24,13 @@ The project is built to explore patterns that most CRUD tutorials skip: tenant-s
 
 > **Status:** Actively in development. Core booking, staff, and super-admin modules are functional; see [Roadmap](#roadmap) for what's next.
 
+## Recently Added
+
+- Tenant-isolation feature coverage with `TenantIsolationTest`
+- Proper foreign-key setup for bookings, businesses, services, and tenant owners
+- `users.business_id` support for owner-to-business linkage
+- Business settings page and update flow for operational profile management
+
 ## Screenshots
 
 <!-- Add screenshots or a short demo GIF here, e.g.:
@@ -104,6 +111,13 @@ Each of the three access layers — **public/guest**, **authenticated tenant (ow
 | `Staff` | Team members a business can assign to bookings |
 | `Availability` | Per-day open/close windows used to compute free slots |
 | `Booking` | The core transaction — links a customer, service, staff member, and time slot |
+
+### Tenant Linkage Notes
+
+- `users.business_id` is used to associate an owner with a business tenant
+- `businesses.user_id` points to the owning user
+- `services.business_id` and `bookings.business_id` keep tenant data scoped to the correct business
+- Tenant-scoped models rely on the shared `BelongsToTenant` trait and `TenantScope`
 
 ## Getting Started
 
@@ -186,7 +200,7 @@ database/migrations/     # Tenant, service, staff, availability & booking schema
 - [ ] Email/SMS reminders for upcoming appointments
 - [ ] Recurring booking support
 - [ ] Public API for third-party integrations
-- [ ] Automated feature test coverage for booking & tenant-isolation logic
+- [x] Automated feature test coverage for booking & tenant-isolation logic
 
 ## Author
 
