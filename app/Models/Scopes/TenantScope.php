@@ -14,13 +14,23 @@ class TenantScope implements Scope
      */
     public function apply(Builder $builder, Model $model): void
     {
-        //user role is super admin, then no need to apply the scope
-        if (Auth::check() && Auth::user()->role !== 'super_admin') {
-            if (Auth::user()->business_id) {
-                $builder->where($model->getTable() . '.business_id', Auth::user()->business_id);
-            } else {
-                $builder->whereRaw('1 = 0');
-            }
+        $user = Auth::user();
+        if (!$user) {
+            return;
+        }
+
+        // super_admin sees everything; customer isolation is by user_id via
+        // relationships, not business_id — neither should hit the tenant filter.
+        if (in_array($user->role, ['super_admin', 'customer'])) {
+            return;
+        }
+
+        if ($user->business_id) {
+            $builder->where($model->getTable() . '.business_id', $user->business_id);
+        } else {
+            // owner (or future business-side roles) with no business_id yet:
+            // fail closed, not open.
+            $builder->whereRaw('1 = 0');
         }
     }
 }

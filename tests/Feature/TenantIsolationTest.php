@@ -118,4 +118,30 @@ class TenantIsolationTest extends TestCase
         $this->assertCount(0, $bookings);
         $this->assertTrue($bookings->isEmpty());
     }
+
+    public function test_customer_sees_own_bookings_unaffected_by_tenant_scope()
+    {
+        $customer = User::factory()->create([
+            'role' => 'customer',
+            'business_id' => null,
+        ]);
+
+        $booking = Booking::create([
+            'business_id' => $this->bookingTenantOne->business_id,
+            'user_id' => $customer->id,
+            'service_id' => $this->serviceId,
+            'booking_date' => now()->format('Y-m-d'),
+            'start_time' => '12:00:00',
+            'end_time' => '13:00:00',
+            'status' => 'pending',
+            'notes' => 'Customer Visibility Test',
+        ]);
+
+        $this->actingAs($customer);
+
+        $customerBookings = $customer->bookings;
+
+        $this->assertFalse($customerBookings->isEmpty());
+        $this->assertTrue($customerBookings->contains($booking));
+    }
 }
