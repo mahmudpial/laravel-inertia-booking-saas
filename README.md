@@ -29,6 +29,8 @@ The project is built to explore patterns that most CRUD tutorials skip: tenant-s
 - Tenant-isolation feature coverage with `TenantIsolationTest`
 - Proper foreign-key setup for bookings, businesses, services, and tenant owners
 - `users.business_id` support for owner-to-business linkage
+- Fail-closed tenant scoping for owners without a `business_id`
+- Security regression test for orphaned owner access returning zero results
 - Business settings page and update flow for operational profile management
 
 ## Screenshots

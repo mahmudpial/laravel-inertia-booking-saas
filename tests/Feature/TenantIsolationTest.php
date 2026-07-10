@@ -103,4 +103,19 @@ class TenantIsolationTest extends TestCase
         $this->assertNotEmpty($allBookings);
         $this->assertTrue($allBookings->contains($this->bookingTenantOne));
     }
+
+    public function test_user_without_business_id_gets_zero_results_not_unfiltered_results()
+    {
+        $orphanOwner = User::factory()->create([
+            'role' => 'owner',
+            'business_id' => null,
+        ]);
+
+        $this->actingAs($orphanOwner);
+
+        $bookings = Booking::all();
+
+        $this->assertCount(0, $bookings);
+        $this->assertTrue($bookings->isEmpty());
+    }
 }
