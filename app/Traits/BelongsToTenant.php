@@ -4,6 +4,7 @@ namespace App\Traits;
 
 use App\Models\Scopes\TenantScope;
 use Illuminate\Support\Facades\Auth;
+use RuntimeException;
 
 trait BelongsToTenant
 {
@@ -15,9 +16,21 @@ trait BelongsToTenant
         static::addGlobalScope(new TenantScope);
 
         static::creating(function ($model) {
-            if (Auth::check() && Auth::user()->role !== 'super_admin') {
-                $model->business_id = $model->business_id ?? Auth::user()->business_id;
+            if (!Auth::check()) {
+                return;
             }
+
+            $user = Auth::user();
+
+            if ($user->role === 'super_admin') {
+                return;
+            }
+
+            if (!$user->business_id) {
+                throw new RuntimeException('Tenant models require an authenticated user with a business_id.');
+            }
+
+            $model->business_id = $model->business_id ?? $user->business_id;
         });
     }
 }
