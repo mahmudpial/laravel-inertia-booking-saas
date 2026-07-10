@@ -7,6 +7,7 @@ use App\Models\Service;
 use App\Models\Availability;
 use App\Models\Booking;
 use App\Models\Staff;
+use App\Models\Scopes\TenantScope;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -19,10 +20,11 @@ class BookingController extends Controller
 {
     /**
      * Public Booking Landing Page
-     * Updated to load Add-ons and Staff Roster
+     * Public route needs to bypass TenantScope to load targeted tenant data via slug
      */
     public function showBookingPage($slug)
     {
+        // Public Flow: User is a guest, explicitly bypassing TenantScope to fetch the business ecosystem
         $business = Business::with([
             'services.addons',
             'staff' => function ($query) {
@@ -41,17 +43,16 @@ class BookingController extends Controller
 
     /**
      * Admin Dashboard: List Bookings
+     * TenantScope safely auto-injects business_id context
      */
     public function adminIndex()
     {
-        $business = Auth::user()->business;
-
-        if (!$business) {
+        if (!Auth::user()->business_id && !Auth::user()->is_super_admin) {
             return redirect()->route('onboarding.index');
         }
 
-        $bookings = $business->bookings()
-            ->with(['user', 'service', 'staff', 'addons'])
+        // Clean: No manual business relationship queries needed. TenantScope secures this.
+        $bookings = Booking::with(['user', 'service', 'staff', 'addons'])
             ->latest()
             ->get();
 
@@ -65,25 +66,22 @@ class BookingController extends Controller
      */
     public function updateStatus(Request $request, $id)
     {
-        $business = Auth::user()->business;
-
         $validated = $request->validate([
             'status' => 'nullable|in:pending,confirmed,canceled,completed',
             'booking_date' => 'nullable|date',
             'start_time' => 'nullable',
         ]);
 
-        $booking = Booking::where('business_id', $business->id)->findOrFail($id);
+        // Clean: TenantScope implicitly enforces business isolation
+        $booking = Booking::findOrFail($id);
 
         // Handle Re-scheduling (Drag & Drop)
         if ($request->filled('booking_date') && $request->filled('start_time')) {
             $newStart = Carbon::parse($request->booking_date . ' ' . $request->start_time);
-            // Re-calculate end time based on original service duration
             $newEnd = $newStart->copy()->addMinutes($booking->service->duration_minutes);
 
-            // Conflict Check: Check specifically for the assigned staff member
-            $hasConflict = Booking::where('business_id', $business->id)
-                ->where('id', '!=', $id)
+            // Conflict Check: Scoped dynamically by the applied TenantScope
+            $hasConflict = Booking::where('id', '!=', $id)
                 ->where('staff_id', $booking->staff_id)
                 ->where('booking_date', $request->booking_date)
                 ->where('status', '!=', 'canceled')
@@ -111,7 +109,7 @@ class BookingController extends Controller
 
     /**
      * Dynamic Slot Generation
-     * Updated: Slots are now filtered by specific Staff Member
+     * Unauthenticated guest flow requires explicit business context filtering
      */
     public function getAvailableSlots(Request $request)
     {
@@ -123,7 +121,10 @@ class BookingController extends Controller
         ]);
 
         $date = Carbon::parse($validated['date']);
-        $availability = Availability::where('business_id', $validated['business_id'])
+
+        // Guest contexts need explicit scope bypass to target the request parameters accurately
+        $availability = Availability::withoutGlobalScope(TenantScope::class)
+            ->where('business_id', $validated['business_id'])
             ->where('day_of_week', $date->dayOfWeek)
             ->first();
 
@@ -131,15 +132,16 @@ class BookingController extends Controller
             return response()->json([]);
         }
 
-        $service = Service::findOrFail($validated['service_id']);
+        $service = Service::withoutGlobalScope(TenantScope::class)->findOrFail($validated['service_id']);
         $duration = $service->duration_minutes;
         $slots = [];
 
         $startTime = Carbon::parse($validated['date'] . ' ' . $availability->start_time);
         $endTime = Carbon::parse($validated['date'] . ' ' . $availability->end_time);
 
-        // Fetch existing bookings ONLY for the selected staff member
-        $existingBookings = Booking::where('business_id', $validated['business_id'])
+        // Fetch existing bookings specifically for the targeted scope context
+        $existingBookings = Booking::withoutGlobalScope(TenantScope::class)
+            ->where('business_id', $validated['business_id'])
             ->where('staff_id', $validated['staff_id'])
             ->where('booking_date', $validated['date'])
             ->where('status', '!=', 'canceled')
@@ -168,7 +170,6 @@ class BookingController extends Controller
 
     /**
      * Store Public Booking
-     * Updated: Handles Staff ID and Add-on pivot syncing
      */
     public function store(Request $request)
     {
@@ -184,12 +185,13 @@ class BookingController extends Controller
         ]);
 
         return DB::transaction(function () use ($validated) {
-            $service = Service::findOrFail($validated['service_id']);
+            $service = Service::withoutGlobalScope(TenantScope::class)->findOrFail($validated['service_id']);
             $start = Carbon::parse($validated['booking_date'] . ' ' . $validated['start_time']);
             $end = $start->copy()->addMinutes($service->duration_minutes);
 
-            // Double check for staff collision before final commit
-            $conflict = Booking::where('business_id', $validated['business_id'])
+            // Double check for staff collision explicitly bypassing current user scope if guest executes it
+            $conflict = Booking::withoutGlobalScope(TenantScope::class)
+                ->where('business_id', $validated['business_id'])
                 ->where('staff_id', $validated['staff_id'])
                 ->where('booking_date', $validated['booking_date'])
                 ->where('status', '!=', 'canceled')
@@ -201,7 +203,7 @@ class BookingController extends Controller
                 return redirect()->back()->withErrors(['time' => 'This window was just secured by another packet.']);
             }
 
-            // Create Primary Booking Record
+            // Create Primary Booking Record -> BelongsToTenant will safely catch this or fallback to explicitly passed business_id
             $booking = Booking::create([
                 'business_id' => $validated['business_id'],
                 'user_id' => Auth::id() ?? 1,
@@ -214,17 +216,25 @@ class BookingController extends Controller
                 'notes' => $validated['notes'],
             ]);
 
-            // Sync Enhancement Packets (Add-ons)
             if (!empty($validated['addon_ids'])) {
                 $booking->addons()->attach($validated['addon_ids']);
             }
 
-            $booking->load(['business.user', 'service', 'staff']);
+            // Safe lookup bypassing global scope strictly to ensure relation mappings resolve fine for notifications
+            $booking->load([
+                'business' => function ($q) {
+                    $q->withoutGlobalScope(TenantScope::class);
+                },
+                'business.user',
+                'service',
+                'staff'
+            ]);
 
-            // Technical Dispatch: Notifications
             try {
-                Mail::to(Auth::user()->email)->send(new BookingNotification($booking, 'customer'));
-                if ($booking->business->user) {
+                if (Auth::check()) {
+                    Mail::to(Auth::user()->email)->send(new BookingNotification($booking, 'customer'));
+                }
+                if ($booking->business && $booking->business->user) {
                     Mail::to($booking->business->user->email)->send(new BookingNotification($booking, 'admin'));
                 }
             } catch (\Exception $e) {

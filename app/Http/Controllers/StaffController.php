@@ -5,24 +5,22 @@ namespace App\Http\Controllers;
 use App\Models\Staff;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Auth;
 
 class StaffController extends Controller
 {
     /**
      * Display the personnel roster index.
+     * TenantScope safely auto-injects business_id filtering context.
      */
     public function index()
     {
-        // ১. বিজনেসটি আগে একটি ভেরিয়েবলে নিন
-        $business = auth()->user()->business;
-
-        // ২. যদি বিজনেস না থাকে তবে অনবোর্ডিং-এ রিডাইরেক্ট করুন (Fail-safe logic)
-        if (!$business) {
+        if (!Auth::user()->business_id) {
             return redirect()->route('onboarding.index')->with('error', 'Business profile synchronization required.');
         }
 
-        // ৩. বিজনেস থাকলে স্টাফ ডাটা আনুন
-        $staff = $business->staff()->latest()->get();
+        // Clean: No manual business relationship queries needed. TenantScope secures this ecosystem.
+        $staff = Staff::latest()->get();
 
         return Inertia::render('Admin/Staff/Index', [
             'staff' => $staff
@@ -34,9 +32,7 @@ class StaffController extends Controller
      */
     public function store(Request $request)
     {
-        $business = auth()->user()->business;
-
-        if (!$business) {
+        if (!Auth::user()->business_id) {
             return redirect()->back()->withErrors(['business' => 'Operational node not found.']);
         }
 
@@ -45,24 +41,19 @@ class StaffController extends Controller
             'role' => 'nullable|string|max:255',
         ]);
 
-        // বিজনেসের আন্ডারে স্টাফ তৈরি করা
-        $business->staff()->create($validated);
+        // Clean: BelongsToTenant trait automatically injects business_id on creation
+        Staff::create($validated);
 
         return redirect()->back()->with('message', 'Specialist deployed to roster successfully.');
     }
 
     /**
      * Terminate specialist access from the system.
+     * Route Model Binding automatically enforces TenantScope; cross-tenant lookup returns 404.
      */
     public function destroy(Staff $staff)
     {
-        $business = auth()->user()->business;
-
-        // নিরাপত্তা চেক: স্টাফটি কি এই ইউজারের বিজনেসের?
-        if (!$business || $staff->business_id !== $business->id) {
-            abort(403, 'Unauthorized access request.');
-        }
-
+        // Secure: TenantScope guarantees a rogue tenant cannot delete another tenant's staff model via URL tampering
         $staff->delete();
 
         return redirect()->back()->with('message', 'Specialist access revoked.');

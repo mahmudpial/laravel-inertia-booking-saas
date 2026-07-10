@@ -15,16 +15,12 @@ class ServiceController extends Controller
 {
     /**
      * Display a listing of the operational units with their enhancement modules.
+     * TenantScope safely auto-injects business_id filtering context.
      */
     public function index(): Response
     {
-        $user = Auth::user();
-        $business = $user->business;
-
-        // Pro Update: Eager load addons to prevent N+1 query issues
-        $services = $business
-            ? $business->services()->with('addons')->latest()->get()
-            : collect();
+        // Clean: No manual business relationship queries needed. TenantScope secures this ecosystem.
+        $services = Service::with('addons')->latest()->get();
 
         return Inertia::render('Admin/Services/Index', [
             'services' => $services
@@ -36,9 +32,7 @@ class ServiceController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $business = Auth::user()->business;
-
-        if (!$business) {
+        if (!Auth::user()->business_id) {
             return redirect()->back()->withErrors(['business' => 'Operational profile not found. Complete onboarding first.']);
         }
 
@@ -47,16 +41,15 @@ class ServiceController extends Controller
             'price' => ['required', 'numeric', 'min:0'],
             'duration_minutes' => ['required', 'integer', 'min:1'],
             'description' => ['nullable', 'string'],
-            // Add-on Validation Logic
             'addons' => ['nullable', 'array'],
             'addons.*.name' => ['required', 'string', 'max:255'],
             'addons.*.price' => ['required', 'numeric', 'min:0'],
             'addons.*.duration_minutes' => ['required', 'integer', 'min:0'],
         ]);
 
-        return DB::transaction(function () use ($business, $validated) {
-            // 1. Create the primary Service SKU
-            $service = $business->services()->create([
+        return DB::transaction(function () use ($validated) {
+            // Clean: BelongsToTenant trait automatically injects business_id on creation
+            $service = Service::create([
                 'name' => $validated['name'],
                 'price' => $validated['price'],
                 'duration_minutes' => $validated['duration_minutes'],
@@ -64,7 +57,7 @@ class ServiceController extends Controller
                 'is_active' => true,
             ]);
 
-            // 2. Map and store Enhancement Packets (Add-ons)
+            // Map and store Enhancement Packets (Add-ons)
             if (!empty($validated['addons'])) {
                 foreach ($validated['addons'] as $addonData) {
                     $service->addons()->create($addonData);
@@ -77,16 +70,10 @@ class ServiceController extends Controller
 
     /**
      * Update an existing SKU configuration and re-quantize add-ons.
+     * Route Model Binding automatically enforces TenantScope; cross-tenant lookup returns 404.
      */
     public function update(Request $request, Service $service): RedirectResponse
     {
-        $business = Auth::user()->business;
-
-        // Security Protocol: Ownership Handshake
-        if (!$business || $service->business_id !== $business->id) {
-            abort(403, 'Unauthorized system access attempt.');
-        }
-
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'price' => ['required', 'numeric', 'min:0'],
@@ -96,7 +83,7 @@ class ServiceController extends Controller
         ]);
 
         return DB::transaction(function () use ($validated, $service) {
-            // 1. Update the parent record
+            // Secure: Automatically scoped to the active tenant execution path
             $service->update([
                 'name' => $validated['name'],
                 'price' => $validated['price'],
@@ -104,7 +91,7 @@ class ServiceController extends Controller
                 'description' => $validated['description'],
             ]);
 
-            // 2. Synchronize Add-ons (Delete old, Re-create new for consistency)
+            // Synchronize Add-ons (Delete old, Re-create new for consistency)
             $service->addons()->delete();
             if (!empty($validated['addons'])) {
                 foreach ($validated['addons'] as $addonData) {
@@ -125,13 +112,7 @@ class ServiceController extends Controller
      */
     public function destroy(Service $service): RedirectResponse
     {
-        $business = Auth::user()->business;
-
-        if (!$business || $service->business_id !== $business->id) {
-            abort(403, 'Unauthorized destruction request.');
-        }
-
-        // Add-ons will be deleted automatically via Database Cascade
+        // Secure: TenantScope guarantees a rogue tenant cannot delete another tenant's resource model via routing hacks
         $service->delete();
 
         return redirect()->back()->with('success', 'Operational SKU purged from system.');

@@ -38,6 +38,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role', // Secured role identifier
+        'business_id',
     ];
 
     /**

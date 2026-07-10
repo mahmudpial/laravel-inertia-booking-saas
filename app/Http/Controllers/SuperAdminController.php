@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Business;
 use App\Models\Booking;
 use App\Models\User;
+use App\Models\Scopes\TenantScope;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
@@ -18,17 +19,12 @@ use Illuminate\Http\RedirectResponse;
  * SOVEREIGN CONTROL NODE:
  * This controller is the primary oversight engine for the SmartBooking SaaS grid.
  * It manages global entity ledgers, financial trajectories, and system-wide 
- * configurations, bypassing individual tenant constraints.
+ * configurations, explicitly bypassing individual tenant constraints.
  */
 class SuperAdminController extends Controller
 {
     /**
      * Display the Sovereign Oversight Dashboard (Global Hub).
-     * 
-     * Workflow:
-     * 1. Aggregate macro KPIs (Global Users, Active Nodes, Platform Revenue).
-     * 2. Synchronize 30-day yield trajectory for financial monitoring.
-     * 3. Profile system-wide node integrity and status.
      */
     public function dashboard(): Response
     {
@@ -40,13 +36,15 @@ class SuperAdminController extends Controller
             'suspended' => Business::where('status', 'suspended')->count(),
         ];
 
-        // Platform-wide Gross Revenue (Cumulative sum of all session values)
-        $globalRevenue = Booking::whereIn('status', ['confirmed', 'completed'])
+        // Platform-wide Gross Revenue - Explicitly bypassing TenantScope for sovereign macro overview
+        $globalRevenue = Booking::withoutGlobalScope(TenantScope::class)
+            ->whereIn('bookings.status', ['confirmed', 'completed'])
             ->join('services', 'bookings.service_id', '=', 'services.id')
             ->sum('services.price');
 
         // 02. FINANCIAL TRAJECTORY (30-Day Real-Time Cycle)
-        $revenueTrend = Booking::whereIn('status', ['confirmed', 'completed'])
+        $revenueTrend = Booking::withoutGlobalScope(TenantScope::class)
+            ->whereIn('bookings.status', ['confirmed', 'completed'])
             ->where('bookings.created_at', '>=', Carbon::now()->subDays(30))
             ->join('services', 'bookings.service_id', '=', 'services.id')
             ->select(
@@ -58,8 +56,13 @@ class SuperAdminController extends Controller
             ->get();
 
         // 03. RECENT ENTITY LEDGER (Latest 5 nodes)
+        // Explicitly bypassing sub-query scopes on target tenant metrics
         $recentEntities = Business::with('user')
-            ->withCount('bookings')
+            ->withCount([
+                'bookings' => function ($query) {
+                    $query->withoutGlobalScope(TenantScope::class);
+                }
+            ])
             ->latest()
             ->take(5)
             ->get()
@@ -78,7 +81,7 @@ class SuperAdminController extends Controller
                 'users' => number_format($totalUsers),
                 'businesses' => $nodeStats,
                 'revenue' => number_format($globalRevenue, 2),
-                'mrr' => number_format($globalRevenue / 12, 2), // Simulated Monthly Yield
+                'mrr' => number_format($globalRevenue / 12, 2),
             ],
             'chartData' => [
                 'labels' => $revenueTrend->pluck('date'),
@@ -90,12 +93,19 @@ class SuperAdminController extends Controller
 
     /**
      * Access the Global Entity Ledger.
-     * Provides a granular view of all business nodes registered on the platform.
      */
     public function entities()
     {
+        // Safe cross-tenant count aggregation for the platform grid
         $entities = Business::with('user')
-            ->withCount(['bookings', 'services'])
+            ->withCount([
+                'bookings' => function ($query) {
+                    $query->withoutGlobalScope(TenantScope::class);
+                },
+                'services' => function ($query) {
+                    $query->withoutGlobalScope(TenantScope::class);
+                }
+            ])
             ->latest()
             ->paginate(15)
             ->through(fn($b) => [
@@ -117,7 +127,6 @@ class SuperAdminController extends Controller
 
     /**
      * Execute Node Status Mutation (Toggle Active/Suspended).
-     * Security Handshake required to disconnect a business node.
      */
     public function toggleNodeStatus($id): RedirectResponse
     {
@@ -131,33 +140,30 @@ class SuperAdminController extends Controller
 
     /**
      * Financial Intelligence Node.
-     * Macro-oversight of platform transactions and commission yields.
-     *
-     * NOTE: There is no payment processor wired up yet, so "platform yield"
-     * is a projection based on an assumed flat commission rate on paid volume.
      */
     public function financials(): Response
     {
-        $commissionRate = 0.12; // 12% assumed platform commission
+        $commissionRate = 0.12;
         $paidStatuses = ['confirmed', 'completed'];
 
-        $grossRevenue = (float) Booking::whereIn('status', $paidStatuses)
+        // Global metrics need absolute query contexts
+        $grossRevenue = (float) Booking::withoutGlobalScope(TenantScope::class)
+            ->whereIn('bookings.status', $paidStatuses)
             ->join('services', 'bookings.service_id', '=', 'services.id')
             ->sum('services.price');
 
-        $totalVolume = Booking::count();
-        $paidVolume = Booking::whereIn('status', $paidStatuses)->count();
+        $totalVolume = Booking::withoutGlobalScope(TenantScope::class)->count();
+        $paidVolume = Booking::withoutGlobalScope(TenantScope::class)->whereIn('status', $paidStatuses)->count();
 
-        $statusBreakdown = Booking::select('status', DB::raw('count(*) as total'))
+        $statusBreakdown = Booking::withoutGlobalScope(TenantScope::class)
+            ->select('status', DB::raw('count(*) as total'))
             ->groupBy('status')
             ->pluck('total', 'status');
 
-        // 6-month revenue trajectory
-        // NOTE: grouped in PHP (not SQL DATE_FORMAT/strftime) so this works
-        // identically across MySQL, MariaDB, SQLite, Postgres, etc.
         $sixMonthsAgo = Carbon::now()->subMonths(6)->startOfMonth();
 
-        $recentPaidBookings = Booking::whereIn('status', $paidStatuses)
+        $recentPaidBookings = Booking::withoutGlobalScope(TenantScope::class)
+            ->whereIn('bookings.status', $paidStatuses)
             ->where('bookings.created_at', '>=', $sixMonthsAgo)
             ->join('services', 'bookings.service_id', '=', 'services.id')
             ->select('bookings.created_at', 'services.price')
@@ -168,10 +174,11 @@ class SuperAdminController extends Controller
             ->map(fn($rows) => $rows->sum('price'))
             ->sortKeys();
 
-        // Top earning business nodes
+        // Top earning business nodes mapping with isolated query bypass
         $topBusinesses = Business::all()->map(function ($b) use ($paidStatuses) {
-            $revenue = (float) Booking::where('bookings.business_id', $b->id)
-                ->whereIn('status', $paidStatuses)
+            $revenue = (float) Booking::withoutGlobalScope(TenantScope::class)
+                ->where('bookings.business_id', $b->id)
+                ->whereIn('bookings.status', $paidStatuses)
                 ->join('services', 'bookings.service_id', '=', 'services.id')
                 ->sum('services.price');
             return [
@@ -205,11 +212,6 @@ class SuperAdminController extends Controller
 
     /**
      * Global Security Audit Ledger.
-     *
-     * NOTE: There is no dedicated audit_logs table yet, so this derives a
-     * chronological activity feed from existing timestamped records
-     * (new businesses, booking lifecycle events). Swap this out for a real
-     * audit trail table if formal compliance logging is needed later.
      */
     public function audit(): Response
     {
@@ -221,7 +223,13 @@ class SuperAdminController extends Controller
             'timestamp' => $b->created_at,
         ]);
 
-        $bookingEvents = Booking::with(['business', 'service'])
+        $bookingEvents = Booking::withoutGlobalScope(TenantScope::class)
+            ->with([
+                'business',
+                'service' => function ($query) {
+                    $query->withoutGlobalScope(TenantScope::class);
+                }
+            ])
             ->latest()
             ->take(25)
             ->get()
@@ -254,8 +262,6 @@ class SuperAdminController extends Controller
 
     /**
      * System-Wide Configuration Hub.
-     * Read-only snapshot of the current runtime configuration
-     * (app, mail, queue, storage, session drivers, versions).
      */
     public function config(): Response
     {

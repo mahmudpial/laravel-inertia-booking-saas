@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
 class Booking extends Model
 {
+    use BelongsToTenant;
+
     protected $fillable = [
         'business_id',
         'user_id',
