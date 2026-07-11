@@ -2,9 +2,9 @@
 
 # SmartBooking
 
-**A multi-tenant SaaS appointment booking platform built with Laravel 13, Inertia.js v2, and Vue 3.**
+**A multi-tenant SaaS appointment booking platform built with Laravel 13, Inertia.js, and Vue 3.**
 
-Give any service business — salons, clinics, studios, consultants — its own branded booking page, staff roster, and availability calendar, all from a single codebase with complete tenant isolation.
+Give any service business - salons, clinics, studios, consultants - its own branded booking page, staff roster, and availability calendar, all from a single codebase with complete tenant isolation.
 
 [![Laravel](https://img.shields.io/badge/Laravel-13.x-FF2D20?style=flat&logo=laravel)](https://laravel.com)
 [![Vue.js](https://img.shields.io/badge/Vue.js-3.4-4FC08D?style=flat&logo=vue.js&logoColor=white)](https://vuejs.org)
@@ -18,11 +18,11 @@ Give any service business — salons, clinics, studios, consultants — its own 
 
 ## Overview
 
-SmartBooking is a multi-tenant booking SaaS where each business operates as an isolated tenant under a single Laravel installation. A business owner signs up, completes an onboarding flow, and instantly gets a public booking page (`/b/{slug}`), a staff and service catalog, an availability schedule, and a live calendar — while a Super Admin layer oversees every tenant, platform-wide revenue, and system health from one dashboard.
+SmartBooking is a multi-tenant booking SaaS where each business operates as an isolated tenant under a single Laravel installation. A business owner signs up, completes an onboarding flow, and gets a public booking page (`/b/{slug}`), a staff and service catalog, an availability schedule, and a calendar-driven admin workflow while a Super Admin layer oversees every tenant, platform-wide revenue, and system health from one dashboard.
 
-The project is built to explore patterns that most CRUD tutorials skip: tenant-scoped middleware, role-based route protection for three distinct user types, and an admin layer that sits above the tenants themselves rather than inside them.
+The project is built around patterns that most CRUD tutorials skip: tenant-scoped middleware, role-based route protection for three distinct user types, and an admin layer that sits above the tenants themselves rather than inside them.
 
-> **Status:** Actively in development. Core booking, staff, and super-admin modules are functional; see [Roadmap](#roadmap) for what's next.
+> **Status:** Actively in development. Core booking, staff, RBAC, tenant isolation, and super-admin modules are functional; see [Feature Notes](#feature-notes) and [Roadmap](#roadmap) for what is implemented versus what is still planned.
 
 ## Recently Added
 
@@ -33,6 +33,28 @@ The project is built to explore patterns that most CRUD tutorials skip: tenant-s
 - Security regression test for orphaned owner access returning zero results
 - Business settings page and update flow for operational profile management
 
+## Feature Notes
+
+### Implemented
+
+- Multi-tenant booking flow with row-level tenant isolation
+- Role-based access control for `customer`, `owner`, and `super_admin`
+- Owner onboarding, services, staff, availability, bookings, and settings modules
+- Super-admin oversight for entities, financials, audit activity, and system configuration
+- Queue support and background job tooling in the Laravel runtime
+
+### Not Implemented Yet
+
+- True real-time updates with WebSockets or broadcast events
+- Production deployment automation or hosting-specific infrastructure
+- Payment gateway integration, reminders, recurring bookings, and public API access
+
+### Recommended Alternatives
+
+- If you need live UI updates now, use periodic polling or a broadcast stack such as Laravel Reverb, Pusher, or Ably. We do not currently ship that layer, so the app relies on standard request/response flows instead of live push events.
+- If you need a documented production setup, add deployment docs for your target platform (for example Docker, Forge, VPS, or a cloud host). The repository includes runtime configuration support, but it does not include a full production delivery pipeline.
+- If you need RBAC beyond the current three roles, consider adding a permission layer such as Laravel policies or a permission package. The current implementation is role-based middleware, which is enough for the existing product scope but not a full granular permission matrix.
+
 ## Screenshots
 
 <!-- Add screenshots or a short demo GIF here, e.g.:
@@ -40,21 +62,25 @@ The project is built to explore patterns that most CRUD tutorials skip: tenant-s
 |---|---|---|
 | ![booking](docs/screenshots/booking-page.png) | ![calendar](docs/screenshots/calendar.png) | ![superadmin](docs/screenshots/superadmin.png) |
 -->
-*Screenshots coming soon.*
+
+_Screenshots coming soon._
 
 ## Key Features
 
-### 🌐 Public / Guest Layer
+### Public / Guest Layer
+
 - Branded, slug-based booking pages per business (`/b/{business-slug}`)
-- Real-time available time-slot lookup based on staff schedule and service duration
+- Dynamic available time-slot lookup based on staff schedule and service duration
 - Guest checkout — customers can book a service without needing an account first
 
-### 🙋 Customer Portal ("My Agenda")
+### Customer Portal ("My Agenda")
+
 - Personal dashboard of upcoming and past bookings
 - Self-service booking cancellation
 - Business discovery hub to browse available services
 
-### 🧑‍💼 Business Owner / Admin Suite
+### Business Owner / Admin Suite
+
 - **Onboarding wizard** — guided first-time setup that provisions a new tenant
 - **Service catalog** — CRUD for services with pricing, duration, and active/inactive status
 - **Service add-ons** — upsell items attached to a base service
@@ -63,30 +89,32 @@ The project is built to explore patterns that most CRUD tutorials skip: tenant-s
 - **Booking management** — status updates (pending → confirmed → completed/cancelled) and a full calendar view (FullCalendar: day/week/month grids)
 - **Business settings** — branding, contact info, and identity customization
 
-### 🛡️ Super Admin Suite (Platform Oversight)
+### Super Admin Suite (Platform Oversight)
+
 - Global KPIs: total users, active vs. suspended businesses
-- Platform-wide gross revenue and a rolling 30-day revenue trend chart (Chart.js)
+- Platform-wide gross revenue and a 30-day revenue trend chart (Chart.js)
 - Entity management — view every tenant and toggle a business active/suspended
 - Financials dashboard and an audit log for platform-level activity
 - System configuration panel
 
-### 🔐 Access Control
-Three distinct roles (`customer`, `owner`, `super_admin`) are enforced through dedicated middleware rather than a single generic gate — each layer (tenant, business-admin, super-admin) is independently protected and cannot be reached by the wrong role, even by URL guessing.
+### Access Control
+
+Three distinct roles (`customer`, `owner`, `super_admin`) are enforced through dedicated middleware rather than a single generic gate - each layer (tenant, business-admin, super-admin) is independently protected and cannot be reached by the wrong role, even by URL guessing.
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Backend framework | Laravel 13 (PHP 8.3) |
-| Frontend ↔ backend bridge | Inertia.js v2 (server-driven SPA, no separate REST layer for the UI) |
-| Frontend framework | Vue 3 (Composition API) |
-| Styling | Tailwind CSS |
-| Calendar UI | FullCalendar (day grid, time grid, interaction plugins) |
-| Charts / analytics | Chart.js + vue-chartjs |
-| Auth scaffolding | Laravel Breeze |
-| API tokens (future use) | Laravel Sanctum |
-| Build tool | Vite |
-| Database | SQLite for local development; MySQL-compatible for production |
+| Layer                     | Technology                                                                      |
+| ------------------------- | ------------------------------------------------------------------------------- |
+| Backend framework         | Laravel 13 (PHP 8.3)                                                            |
+| Frontend ↔ backend bridge | Inertia.js v2 (server-driven SPA, no separate REST layer for the UI)            |
+| Frontend framework        | Vue 3 (Composition API)                                                         |
+| Styling                   | Tailwind CSS                                                                    |
+| Calendar UI               | FullCalendar (day grid, time grid, interaction plugins)                         |
+| Charts / analytics        | Chart.js + vue-chartjs                                                          |
+| Auth scaffolding          | Laravel Breeze                                                                  |
+| API tokens (future use)   | Laravel Sanctum                                                                 |
+| Build tool                | Vite                                                                            |
+| Database                  | SQLite for local development; MySQL-compatible for production-ready deployments |
 
 ## Architecture: How Multi-Tenancy Works
 
@@ -102,17 +130,21 @@ Request → auth + verified
 
 Each of the three access layers — **public/guest**, **authenticated tenant (owner/customer)**, and **super admin** — is checked independently, so a customer account can never reach admin routes and a business owner can never reach another tenant's data or the platform-oversight layer.
 
+### Production Readiness
+
+The repository includes the basics you need to run in production-like environments, including environment-based configuration, queue support, asset building, and distinct runtime toggles for features such as mail, cache, and sessions. What it does not include yet is a full deployment workflow, autoscaling strategy, or hosting-specific production guide.
+
 ### Core Data Model
 
-| Model | Purpose |
-|---|---|
-| `User` | Auth identity; carries the `customer` / `owner` / `super_admin` role |
-| `Business` | A tenant — one owner, one slug, one public booking page |
-| `Service` | A bookable offering with price and duration, scoped to a business |
-| `ServiceAddon` | Optional upsell attached to a service |
-| `Staff` | Team members a business can assign to bookings |
-| `Availability` | Per-day open/close windows used to compute free slots |
-| `Booking` | The core transaction — links a customer, service, staff member, and time slot |
+| Model          | Purpose                                                                       |
+| -------------- | ----------------------------------------------------------------------------- |
+| `User`         | Auth identity; carries the `customer` / `owner` / `super_admin` role          |
+| `Business`     | A tenant — one owner, one slug, one public booking page                       |
+| `Service`      | A bookable offering with price and duration, scoped to a business             |
+| `ServiceAddon` | Optional upsell attached to a service                                         |
+| `Staff`        | Team members a business can assign to bookings                                |
+| `Availability` | Per-day open/close windows used to compute free slots                         |
+| `Booking`      | The core transaction — links a customer, service, staff member, and time slot |
 
 ### Tenant Linkage Notes
 
@@ -124,6 +156,7 @@ Each of the three access layers — **public/guest**, **authenticated tenant (ow
 ## Getting Started
 
 ### Prerequisites
+
 - PHP 8.3+
 - Composer
 - Node.js & npm
@@ -202,6 +235,8 @@ database/migrations/     # Tenant, service, staff, availability & booking schema
 - [ ] Email/SMS reminders for upcoming appointments
 - [ ] Recurring booking support
 - [ ] Public API for third-party integrations
+- [ ] Real-time push updates for bookings and availability
+- [ ] Production deployment guide and environment hardening checklist
 - [x] Automated feature test coverage for booking & tenant-isolation logic
 
 ## Author
