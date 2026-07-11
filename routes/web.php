@@ -51,9 +51,9 @@ Route::get('/b/{slug}', [BookingController::class, 'showBookingPage'])->name('bo
 Route::get('/api/available-slots', [BookingController::class, 'getAvailableSlots'])->name('api.slots');
 
 /** 
- * Secure Transmission: Guest Booking Packet Dispatch
+ * Secure Transmission: Authenticated Booking Packet Dispatch
  */
-Route::post('/booking/store', [BookingController::class, 'store'])->name('booking.store');
+Route::post('/booking/store', [BookingController::class, 'store'])->name('booking.store')->middleware('auth');
 
 
 /*
