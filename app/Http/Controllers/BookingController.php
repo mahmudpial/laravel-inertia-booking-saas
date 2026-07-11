@@ -206,7 +206,7 @@ class BookingController extends Controller
             // Create Primary Booking Record -> BelongsToTenant will safely catch this or fallback to explicitly passed business_id
             $booking = Booking::create([
                 'business_id' => $validated['business_id'],
-                'user_id' => Auth::id() ?? 1,
+                'user_id' => Auth::id(),
                 'service_id' => $validated['service_id'],
                 'staff_id' => $validated['staff_id'],
                 'booking_date' => $validated['booking_date'],
