@@ -1,26 +1,31 @@
 <script setup>
 /**
- * SmartBooking Public Deployment Portal v4.2.5
- * 
- * DESIGN SPECIFICATIONS:
- * 1. Strategic Flow: 5-Phase journey (SKU > Add-on > Node > Time > Sync)
- * 2. Visual Identity: Industrial Obsidian and Indigo Signal Accents.
- * 3. Architecture: Full-screen blueprint grid.
+ * SmartBooking Public Client Booking Experience
+ * Modern Cal.com / Airbnb Luxe Architecture
  * 
  * @author Pial Mahmud (System Architect)
  */
 
 import { ref, computed } from 'vue';
-import { useForm, Head } from '@inertiajs/vue3';
+import { useForm, Head, Link, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 
-const props = defineProps({ business: Object, services: Array, staff: Array });
+const props = defineProps({
+    business: Object,
+    services: Array,
+    staff: Array
+});
+
+const page = usePage();
+const authUser = computed(() => page.props.auth?.user);
 
 const selectedDate = ref('');
 const availableSlots = ref([]);
-const loading = ref(false);
+const loadingSlots = ref(false);
 const currentStep = ref(1);
 const selectedAddons = ref([]);
+const bookingSuccess = ref(false);
+const confirmedBookingData = ref(null);
 
 const form = useForm({
     business_id: props.business?.id,
@@ -35,468 +40,737 @@ const form = useForm({
 const selectedService = computed(() => props.services.find(s => s.id === form.service_id) || null);
 const selectedStaff = computed(() => props.staff?.find(s => s.id === form.staff_id) || null);
 
-const totalValuation = computed(() => {
+const totalDuration = computed(() => {
+    const base = selectedService.value?.duration_minutes || 0;
+    const addons = selectedAddons.value.reduce((sum, a) => sum + (a.duration_minutes || 0), 0);
+    return base + addons;
+});
+
+const totalPrice = computed(() => {
     const base = parseFloat(selectedService.value?.price || 0);
-    const addons = selectedAddons.value.reduce((sum, a) => sum + parseFloat(a.price), 0);
+    const addons = selectedAddons.value.reduce((sum, a) => sum + parseFloat(a.price || 0), 0);
     return (base + addons).toFixed(2);
 });
 
 const fetchSlots = async () => {
     if (!form.service_id || !selectedDate.value || !form.staff_id) return;
-    loading.value = true;
+    loadingSlots.value = true;
+    form.start_time = '';
     try {
         const response = await axios.get(route('api.slots'), {
-            params: { business_id: props.business.id, service_id: form.service_id, staff_id: form.staff_id, date: selectedDate.value }
+            params: {
+                business_id: props.business.id,
+                service_id: form.service_id,
+                staff_id: form.staff_id,
+                date: selectedDate.value
+            }
         });
         availableSlots.value = response.data;
-    } catch (error) { console.error(error); }
-    finally { loading.value = false; }
+    } catch (error) {
+        console.error('Failed to load slots', error);
+        availableSlots.value = [];
+    } finally {
+        loadingSlots.value = false;
+    }
 };
 
 const selectService = (id) => {
     form.service_id = id;
     selectedAddons.value = [];
     const service = props.services.find(s => s.id === id);
-    currentStep.value = (service?.addons?.length > 0) ? 2 : 3;
+    if (service?.addons && service.addons.length > 0) {
+        currentStep.value = 2;
+    } else {
+        currentStep.value = 3;
+    }
 };
 
 const toggleAddon = (addon) => {
-    const index = selectedAddons.value.findIndex(a => a.id === addon.id);
-    if (index > -1) selectedAddons.value.splice(index, 1);
+    const idx = selectedAddons.value.findIndex(a => a.id === addon.id);
+    if (idx > -1) selectedAddons.value.splice(idx, 1);
     else selectedAddons.value.push(addon);
 };
 
 const selectStaff = (id) => {
     form.staff_id = id;
     currentStep.value = 4;
+    // Set default date to today or tomorrow if not set
+    if (!selectedDate.value) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        selectedDate.value = tomorrow.toISOString().split('T')[0];
+    }
+    fetchSlots();
 };
 
-const submit = () => {
+const selectSlot = (time) => {
+    form.start_time = time;
+};
+
+const submitBooking = () => {
     form.booking_date = selectedDate.value;
     form.addon_ids = selectedAddons.value.map(a => a.id);
+
     form.post(route('booking.store'), {
         preserveScroll: true,
         onSuccess: () => {
-            alert('✅ Session Secured and Dispatched.');
+            confirmedBookingData.value = {
+                service: selectedService.value?.name,
+                staff: selectedStaff.value?.name,
+                date: form.booking_date,
+                time: form.start_time,
+                total: totalPrice.value
+            };
+            bookingSuccess.value = true;
             form.reset();
-            currentStep.value = 1;
         }
     });
 };
+
+const resetFlow = () => {
+    bookingSuccess.value = false;
+    currentStep.value = 1;
+    selectedAddons.value = [];
+    selectedDate.value = '';
+    availableSlots.value = [];
+};
+
+// Google Calendar Quick Export Link
+const googleCalendarLink = computed(() => {
+    if (!confirmedBookingData.value) return '#';
+    const title = encodeURIComponent(`${confirmedBookingData.value.service} at ${props.business.name}`);
+    const details = encodeURIComponent(`Appointment with ${confirmedBookingData.value.staff}. Total: $${confirmedBookingData.value.total}`);
+    const location = encodeURIComponent(props.business.address || props.business.name);
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&location=${location}`;
+});
 </script>
 
 <template>
+    <Head :title="business.name + ' | Book Appointment Online'" />
 
-    <Head :title="business.name + ' | Appointment Gateway'" />
+    <div class="min-h-screen bg-slate-50/70 text-slate-900 font-sans antialiased selection:bg-brand-600 selection:text-white pb-24">
 
-    <div
-        class="min-h-screen bg-[#FDFDFF] font-sans antialiased text-[#09090B] pb-48 selection:bg-indigo-600 selection:text-white relative">
+        <!-- Blueprint Background Pattern -->
+        <div class="fixed inset-0 z-0 pointer-events-none bg-dot-grid opacity-60"></div>
 
-        <!-- BLUEPRINT BACKGROUND SYSTEM -->
-        <div class="fixed inset-0 z-0 pointer-events-none">
-            <div
-                class="absolute inset-0 bg-[radial-gradient(#e5e7eb_1.5px,transparent_1.5px)] [background-size:32px_32px] opacity-40">
-            </div>
-            <div
-                class="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]">
-            </div>
-        </div>
-
-        <div class="relative z-10 max-w-6xl mx-auto px-6 pt-16 lg:pt-32">
-
-            <!-- EDITORIAL HERO HEADER -->
-            <div class="grid grid-cols-1 xl:grid-cols-12 gap-16 mb-24 items-start">
-                <div class="xl:col-span-6 space-y-8 animate-slideUp">
-                    <div class="flex items-center gap-3">
-                        <div
-                            class="w-16 h-16 bg-[#09090B] rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl shadow-indigo-900/40">
-                            <img v-if="business.logo" :src="'/storage/' + business.logo"
-                                class="w-full h-full object-cover rounded-[1.5rem]" />
-                            <span v-else class="text-2xl font-black">{{ business.name.charAt(0) }}</span>
-                        </div>
-                        <div class="px-4 py-1.5 bg-emerald-50 border border-emerald-100 rounded-full">
-                            <span class="text-[9px] font-black uppercase tracking-[0.3em] text-emerald-600">Encrypted
-                                Gateway Active</span>
-                        </div>
+        <!-- =========================================================
+             1. PUBLIC TOP BRAND NAVBAR
+             ========================================================= -->
+        <header class="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200/70">
+            <div class="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+                <Link :href="route('booking.page', business.slug)" class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-slate-900 text-white font-bold text-sm flex items-center justify-center shrink-0 shadow-xs">
+                        <img v-if="business.logo" :src="'/storage/' + business.logo" class="w-full h-full object-cover rounded-xl" />
+                        <span v-else>{{ business.name.charAt(0) }}</span>
                     </div>
-                    <h1 class="text-7xl lg:text-9xl font-black tracking-tighter leading-[0.8] text-[#09090B] uppercase">
-                        Book <br /> <span class="text-indigo-600">{{ business.name }}.</span>
-                    </h1>
-                </div>
-
-                <div
-                    class="xl:col-span-6 bg-white border border-slate-200/60 p-10 lg:p-14 rounded-[4rem] shadow-2xl animate-fadeIn">
-                    <p class="text-[10px] font-black text-indigo-400 uppercase tracking-[0.5em] mb-6">Service Briefing
-                    </p>
-                    <article class="text-slate-500 text-lg leading-relaxed font-medium italic">
-                        "Welcome to our professional operational node. We prioritize your privacy and time quantization.
-                        Every booking packet is processed with end-to-end masked encryption to ensure total
-                        confidentiality."
-                    </article>
-                </div>
-            </div>
-
-            <!-- MAIN OPERATIONAL CANVASS -->
-            <div
-                class="bg-white border border-slate-200 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.12)] rounded-[5rem] overflow-hidden">
-
-                <!-- PHASE STEPPER -->
-                <div class="flex items-center px-10 pt-10 gap-2 sm:gap-4">
-                    <div v-for="step in 5" :key="step" class="flex-1 flex flex-col gap-3">
-                        <div class="h-1.5 rounded-full transition-all duration-1000"
-                            :class="currentStep >= step ? 'bg-indigo-600 shadow-[0_0_12px_#4f46e5]' : 'bg-slate-100'">
-                        </div>
-                        <span :class="currentStep >= step ? 'text-indigo-600' : 'text-slate-300'"
-                            class="text-[8px] font-black uppercase tracking-[0.3em] hidden sm:block">
-                            Phase 0{{ step }}
+                    <div class="flex flex-col text-left">
+                        <span class="text-sm font-bold text-slate-900 tracking-tight leading-tight">{{ business.name }}</span>
+                        <span class="text-[11px] text-slate-500 flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            Online Booking Gateway
                         </span>
                     </div>
-                </div>
+                </Link>
 
-                <div class="p-8 lg:p-20">
-                    <form @submit.prevent="submit">
-
-                        <!-- PHASE 01: SKU SELECTION -->
-                        <Transition name="fade" mode="out-in">
-                            <div v-if="currentStep === 1" class="space-y-12">
-                                <h2 class="text-4xl font-black tracking-tighter uppercase leading-none">Select <span
-                                        class="text-indigo-600">Unit.</span></h2>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <button v-for="s in services" :key="s.id" type="button" @click="selectService(s.id)"
-                                        class="group text-left p-12 rounded-[4rem] border border-slate-100 bg-[#FDFDFF] hover:border-indigo-500 hover:shadow-2xl transition-all duration-500 relative overflow-hidden">
-                                        <div class="flex justify-between items-start mb-16">
-                                            <div
-                                                class="w-16 h-14 rounded-2xl bg-[#09090B] flex items-center justify-center text-white transition-all duration-500 shadow-xl">
-                                                <svg class="w-8 h-8" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                                </svg>
-                                            </div>
-                                            <p
-                                                class="text-3xl font-black text-[#09090B] tracking-tighter group-hover:text-indigo-600 transition-colors">
-                                                ${{ s.price }}</p>
-                                        </div>
-                                        <h3
-                                            class="text-2xl font-black text-[#09090B] uppercase tracking-tighter leading-none">
-                                            {{ s.name }}</h3>
-                                        <p class="text-xs text-slate-400 mt-4 font-black uppercase tracking-[0.3em]">{{
-                                            s.duration_minutes }} Minute Operational Block</p>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- PHASE 02: ENHANCEMENTS (ADD-ONS) -->
-                            <div v-else-if="currentStep === 2" class="space-y-12">
-                                <div class="flex items-center gap-8">
-                                    <button @click="currentStep = 1" type="button"
-                                        class="w-14 h-14 bg-slate-50 flex items-center justify-center rounded-2xl hover:bg-[#09090B] hover:text-white transition-all">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
-                                                d="M15 19l-7-7 7-7" />
-                                        </svg>
-                                    </button>
-                                    <h2 class="text-4xl font-black tracking-tighter uppercase leading-none">Enhance
-                                        <span class="text-indigo-600">Packet.</span></h2>
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <button v-for="addon in selectedService?.addons" :key="addon.id" type="button"
-                                        @click="toggleAddon(addon)" :class="[
-                                            'text-left p-8 rounded-[3.5rem] border transition-all duration-500 flex justify-between items-center group',
-                                            selectedAddons.find(a => a.id === addon.id) ? 'bg-[#09090B] border-indigo-600 shadow-2xl' : 'bg-white border-slate-100 hover:border-indigo-400'
-                                        ]">
-                                        <div class="flex items-center gap-6">
-                                            <div :class="selectedAddons.find(a => a.id === addon.id) ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-300'"
-                                                class="w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500">
-                                                <svg class="w-6 h-6" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="3" d="M12 4v16m8-8H4" />
-                                                </svg>
-                                            </div>
-                                            <div>
-                                                <h4 :class="selectedAddons.find(a => a.id === addon.id) ? 'text-white' : 'text-[#09090B]'"
-                                                    class="font-black uppercase text-base tracking-tight leading-none">
-                                                    {{ addon.name }}</h4>
-                                                <p
-                                                    class="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] mt-2">
-                                                    +{{ addon.duration_minutes }} Min</p>
-                                            </div>
-                                        </div>
-                                        <span
-                                            :class="selectedAddons.find(a => a.id === addon.id) ? 'text-indigo-400' : 'text-indigo-600'"
-                                            class="text-2xl font-black tracking-tighter">+${{ addon.price }}</span>
-                                    </button>
-                                </div>
-                                <div class="pt-12 border-t border-slate-100 flex items-center justify-between">
-                                    <div class="text-left">
-                                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] mb-2">
-                                            Net Accumulation</p>
-                                        <h3 class="text-5xl font-black text-[#09090B] tracking-tighter">${{
-                                            totalValuation }}</h3>
-                                    </div>
-                                    <button type="button" @click="currentStep = 3"
-                                        class="px-16 py-7 bg-[#09090B] text-white text-[10px] font-black uppercase tracking-[0.5em] rounded-[2rem] shadow-2xl hover:bg-indigo-600 transition-all active:scale-95">Deploy
-                                        Roster</button>
-                                </div>
-                            </div>
-
-                            <!-- PHASE 03: SPECIALIST ASSIGNMENT -->
-                            <div v-else-if="currentStep === 3" class="space-y-12">
-                                <div class="flex items-center gap-8">
-                                    <button @click="currentStep = (selectedService?.addons?.length > 0 ? 2 : 1)"
-                                        type="button"
-                                        class="w-14 h-14 bg-slate-50 flex items-center justify-center rounded-2xl hover:bg-[#09090B] transition-all">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
-                                                d="M15 19l-7-7 7-7" />
-                                        </svg>
-                                    </button>
-                                    <h2
-                                        class="text-4xl font-black tracking-tighter uppercase leading-none text-[#09090B]">
-                                        Choose <span class="text-indigo-600">Node.</span></h2>
-                                </div>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-                                    <button v-for="member in staff" :key="member.id" type="button"
-                                        @click="selectStaff(member.id)"
-                                        class="group p-12 rounded-[4rem] border border-slate-100 bg-white hover:border-indigo-500 hover:shadow-2xl transition-all duration-700 flex flex-col items-center text-center">
-                                        <div
-                                            class="w-24 h-24 rounded-full bg-slate-50 flex items-center justify-center font-black text-4xl text-slate-200 group-hover:bg-[#09090B] group-hover:text-white group-hover:rotate-12 transition-all duration-500 mb-10 border-2 border-dashed border-slate-200 shadow-inner">
-                                            {{ member.name.charAt(0) }}
-                                        </div>
-                                        <h3
-                                            class="text-xl font-black text-[#09090B] uppercase tracking-tighter leading-none group-hover:text-indigo-600 transition-colors">
-                                            {{ member.name }}</h3>
-                                        <p
-                                            class="text-[9px] font-black text-indigo-400 uppercase tracking-[0.5em] mt-4">
-                                            {{ member.role || 'Authorized Specialist' }}</p>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- PHASE 04: OPERATIONAL SYNC (CALENDAR) -->
-                            <div v-else-if="currentStep === 4" class="space-y-20">
-                                <div class="flex items-center gap-8">
-                                    <button @click="currentStep = 3" type="button"
-                                        class="w-14 h-14 bg-slate-50 flex items-center justify-center rounded-2xl hover:bg-[#09090B] transition-all">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
-                                                d="M15 19l-7-7 7-7" />
-                                        </svg>
-                                    </button>
-                                    <h2 class="text-4xl font-black tracking-tighter uppercase leading-none">Operational
-                                        <span class="text-indigo-600">Sync.</span></h2>
-                                </div>
-
-                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-20 items-start">
-                                    <div
-                                        class="bg-slate-50/50 p-12 rounded-[4rem] border border-slate-100 shadow-inner">
-                                        <label
-                                            class="text-[10px] font-black uppercase tracking-[0.5em] text-slate-400 mb-10 block">01.
-                                            Temporal Selection</label>
-                                        <input type="date" v-model="selectedDate" @change="fetchSlots"
-                                            class="w-full bg-white border-none rounded-[2rem] p-8 text-xl font-black shadow-2xl focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer uppercase tracking-tighter" />
-                                    </div>
-
-                                    <div class="min-h-[400px]">
-                                        <label
-                                            class="text-[10px] font-black uppercase tracking-[0.5em] text-slate-400 mb-10 block">02.
-                                            Verified Time Windows</label>
-                                        <div v-if="loading" class="flex items-center justify-center py-20">
-                                            <div
-                                                class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin">
-                                            </div>
-                                        </div>
-                                        <div v-else-if="availableSlots.length > 0"
-                                            class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                                            <button v-for="slot in availableSlots" :key="slot.time" type="button"
-                                                @click="form.start_time = slot.time"
-                                                :class="form.start_time === slot.time ? 'bg-[#09090B] text-white shadow-2xl scale-105' : 'bg-white border border-slate-100 text-[#09090B] hover:border-indigo-400 shadow-sm'"
-                                                class="py-6 rounded-[1.5rem] text-xs font-black uppercase tracking-widest transition-all duration-300">
-                                                {{ slot.formatted }}
-                                            </button>
-                                        </div>
-                                        <div v-else
-                                            class="text-center py-32 px-10 bg-slate-50/50 rounded-[4rem] border-2 border-dashed border-slate-200">
-                                            <p
-                                                class="text-[10px] font-black text-slate-300 uppercase tracking-[0.8em] leading-loose">
-                                                Choose date to scan<br />operational slots</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div
-                                    class="pt-12 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-10">
-                                    <div v-if="form.start_time"
-                                        class="px-10 py-5 bg-[#09090B] rounded-full flex items-center gap-5 shadow-2xl">
-                                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                        <p class="text-sm font-black text-white uppercase tracking-widest">{{
-                                            selectedDate }} at {{ form.start_time }}</p>
-                                    </div>
-                                    <button type="button" @click="currentStep = 5" :disabled="!form.start_time"
-                                        class="w-full sm:w-auto px-16 py-7 bg-indigo-600 text-white text-[11px] font-black uppercase tracking-[0.5em] rounded-[2rem] shadow-2xl active:scale-95 disabled:opacity-20">
-                                        Authorize Sync
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- PHASE 05: FINAL DISPATCH (THE RECEIPT) -->
-                            <div v-else-if="currentStep === 5" class="max-w-3xl mx-auto space-y-16 animate-slideUp">
-                                <div class="text-center space-y-6">
-                                    <h2
-                                        class="text-5xl lg:text-7xl font-black tracking-tighter uppercase text-[#09090B]">
-                                        Registry <span class="text-indigo-600">Confirm.</span></h2>
-                                    <p class="text-[11px] font-black text-slate-400 uppercase tracking-[0.6em]">Final
-                                        Authorized Packet Review</p>
-                                </div>
-
-                                <div
-                                    class="bg-[#09090B] p-12 lg:p-20 rounded-[5rem] text-white shadow-[0_60px_150px_rgba(0,0,0,0.4)] relative overflow-hidden group border border-white/5">
-                                    <div
-                                        class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,#4f46e533_0%,transparent_70%)] opacity-50">
-                                    </div>
-                                    <div class="relative z-10 space-y-12">
-                                        <div class="flex flex-col lg:flex-row justify-between gap-10">
-                                            <div class="space-y-4">
-                                                <p
-                                                    class="text-[10px] font-black text-indigo-400 uppercase tracking-[0.5em]">
-                                                    Selected Unit</p>
-                                                <h3 class="text-5xl font-black uppercase tracking-tighter leading-none">
-                                                    {{ selectedService?.name }}</h3>
-                                            </div>
-                                            <div class="lg:text-right space-y-4">
-                                                <p
-                                                    class="text-[10px] font-black text-slate-500 uppercase tracking-[0.5em]">
-                                                    Principal Expert</p>
-                                                <p
-                                                    class="text-2xl font-black uppercase tracking-tighter text-indigo-200 leading-none">
-                                                    {{ selectedStaff?.name }}</p>
-                                            </div>
-                                        </div>
-
-                                        <div v-if="selectedAddons.length > 0" class="pt-10 border-t border-white/10">
-                                            <p
-                                                class="text-[10px] font-black text-slate-500 uppercase tracking-[0.5em] mb-8">
-                                                Enhancement Modules</p>
-                                            <div class="space-y-4">
-                                                <div v-for="a in selectedAddons" :key="a.id"
-                                                    class="flex justify-between items-center bg-white/5 p-6 rounded-3xl border border-white/5">
-                                                    <span
-                                                        class="text-sm font-black uppercase tracking-widest text-slate-300">{{
-                                                        a.name }}</span>
-                                                    <span class="text-lg font-black text-indigo-400">+${{ a.price
-                                                        }}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div
-                                            class="flex flex-col md:flex-row justify-between items-end pt-12 border-t border-white/10 gap-10">
-                                            <div class="text-left space-y-4">
-                                                <p
-                                                    class="text-[10px] font-black text-slate-500 uppercase tracking-[0.5em]">
-                                                    Synchronized Window</p>
-                                                <p class="text-2xl font-black uppercase tracking-tighter leading-none">
-                                                    {{ selectedDate }}</p>
-                                                <p
-                                                    class="text-2xl font-black uppercase tracking-tighter text-indigo-400 leading-none">
-                                                    {{ form.start_time }}</p>
-                                            </div>
-                                            <div class="text-right space-y-4">
-                                                <p
-                                                    class="text-[10px] font-black text-slate-500 uppercase tracking-[0.5em]">
-                                                    Total Yield Value</p>
-                                                <p
-                                                    class="text-7xl font-black tracking-tighter text-emerald-400 leading-none">
-                                                    ${{ totalValuation }}</p>
-                                            </div>
-                                        </div>
-                                        <button @click="currentStep = 1"
-                                            class="text-[10px] font-black uppercase tracking-[0.4em] border-b-4 border-indigo-600 pb-2 hover:text-indigo-400 transition-all">Re-initialize
-                                            Packet</button>
-                                    </div>
-                                </div>
-
-                                <div class="space-y-8 px-4">
-                                    <label
-                                        class="text-[11px] font-black uppercase tracking-[0.8em] text-slate-400 block text-center">Optional
-                                        Session Requirements</label>
-                                    <textarea v-model="form.notes" rows="4"
-                                        placeholder="Transmit operational intelligence to the specialist..."
-                                        class="w-full bg-slate-50 border-none rounded-[3rem] p-10 text-lg font-bold text-[#09090B] focus:ring-2 focus:ring-indigo-500 transition-all resize-none shadow-inner leading-relaxed italic"></textarea>
-                                </div>
-
-                                <button type="submit" :disabled="form.processing"
-                                    class="w-full py-10 bg-indigo-600 text-white text-[12px] font-black uppercase tracking-[0.8em] rounded-[3rem] hover:bg-[#09090B] transition-all shadow-[0_40px_100px_rgba(79,70,229,0.3)] active:scale-95 disabled:opacity-50">
-                                    Deploy Operational Session
-                                </button>
-                            </div>
-                        </Transition>
-
-                    </form>
+                <div class="flex items-center gap-3">
+                    <template v-if="authUser">
+                        <Link
+                            :href="route('customer.dashboard')"
+                            class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors"
+                        >
+                            My Agenda
+                        </Link>
+                    </template>
+                    <template v-else>
+                        <Link
+                            :href="route('login')"
+                            class="text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+                        >
+                            Sign In
+                        </Link>
+                        <Link
+                            :href="route('register')"
+                            class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 text-white hover:bg-brand-700 shadow-xs transition-colors"
+                        >
+                            Register
+                        </Link>
+                    </template>
                 </div>
             </div>
+        </header>
 
-            <footer class="mt-32 text-center">
-                <p class="text-[10px] font-black text-slate-300 uppercase tracking-[1.5em]">Secure Infrastructure Node
-                    v4.2.5 | SmartBooking Engine</p>
-            </footer>
+        <!-- =========================================================
+             2. BUSINESS IDENTITY HERO CARD
+             ========================================================= -->
+        <div class="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-4">
+            <div class="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-card flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div class="flex items-start gap-4">
+                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-600 text-white flex items-center justify-center font-extrabold text-2xl shrink-0 shadow-lg shadow-brand-500/20">
+                        <img v-if="business.logo" :src="'/storage/' + business.logo" class="w-full h-full object-cover rounded-2xl" />
+                        <span v-else>{{ business.name.charAt(0) }}</span>
+                    </div>
+                    <div class="space-y-1 text-left">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 font-display">
+                                {{ business.name }}
+                            </h1>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-brand-50 text-brand-700 border border-brand-200">
+                                Verified Business
+                            </span>
+                        </div>
+                        <p class="text-xs sm:text-sm text-slate-500 line-clamp-2 max-w-xl">
+                            {{ business.description || 'Welcome! Schedule your appointment in a few easy steps below.' }}
+                        </p>
+                        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 pt-1">
+                            <span v-if="business.address" class="flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                {{ business.address }}
+                            </span>
+                            <span v-if="business.phone" class="flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                </svg>
+                                {{ business.phone }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Instant Pricing Summary Capsule -->
+                <div v-if="selectedService" class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 min-w-[200px] text-left">
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Selected Offering</p>
+                    <p class="text-sm font-bold text-slate-900 truncate">{{ selectedService.name }}</p>
+                    <div class="mt-2 flex items-center justify-between text-xs">
+                        <span class="text-slate-500">{{ totalDuration }} mins total</span>
+                        <span class="text-base font-extrabold text-brand-600 font-display">${{ totalPrice }}</span>
+                    </div>
+                </div>
+            </div>
         </div>
+
+        <!-- =========================================================
+             3. MAIN BOOKING WORKFLOW CANVAS
+             ========================================================= -->
+        <main class="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 pt-4">
+            <div class="bg-white rounded-3xl border border-slate-200/80 shadow-card overflow-hidden">
+
+                <!-- STEP PROGRESS BAR -->
+                <div class="px-6 sm:px-10 pt-6 pb-4 border-b border-slate-100 bg-slate-50/50">
+                    <div class="flex items-center justify-between">
+                        <div
+                            v-for="(stepName, idx) in ['Service', 'Add-ons', 'Specialist', 'Date & Time', 'Confirm']"
+                            :key="idx"
+                            class="flex-1 flex flex-col items-center relative group"
+                        >
+                            <div class="flex items-center w-full">
+                                <div
+                                    :class="[
+                                        'w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all z-10 shrink-0 mx-auto',
+                                        currentStep > idx + 1
+                                            ? 'bg-emerald-500 text-white shadow-sm'
+                                            : currentStep === idx + 1
+                                                ? 'bg-brand-600 text-white ring-4 ring-brand-100 shadow-md shadow-brand-500/25'
+                                                : 'bg-slate-200 text-slate-500'
+                                    ]"
+                                >
+                                    <svg v-if="currentStep > idx + 1" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    <span v-else>{{ idx + 1 }}</span>
+                                </div>
+                            </div>
+                            <span
+                                :class="[
+                                    'text-[10px] sm:text-xs font-medium mt-2 hidden sm:block',
+                                    currentStep === idx + 1 ? 'text-brand-600 font-bold' : 'text-slate-500'
+                                ]"
+                            >
+                                {{ stepName }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP VIEWS -->
+                <div class="p-6 sm:p-10">
+
+                    <!-- =========================================================
+                         STEP 1: SELECT SERVICE
+                         ========================================================= -->
+                    <div v-if="currentStep === 1" class="space-y-6">
+                        <div class="text-left">
+                            <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 font-display">
+                                Choose a Service
+                            </h2>
+                            <p class="text-xs sm:text-sm text-slate-500 mt-1">
+                                Select from our professional offerings below to begin scheduling.
+                            </p>
+                        </div>
+
+                        <div v-if="services?.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <button
+                                v-for="service in services"
+                                :key="service.id"
+                                type="button"
+                                @click="selectService(service.id)"
+                                :class="[
+                                    'text-left p-6 rounded-2xl border transition-all duration-200 relative group hover:shadow-card flex flex-col justify-between',
+                                    form.service_id === service.id
+                                        ? 'bg-brand-50/50 border-brand-500 ring-2 ring-brand-500/20'
+                                        : 'bg-white border-slate-200/80 hover:border-brand-400'
+                                ]"
+                            >
+                                <div>
+                                    <div class="flex items-start justify-between gap-3 mb-3">
+                                        <div class="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center shrink-0">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                            </svg>
+                                        </div>
+                                        <span class="text-xl font-bold text-slate-900 font-display">
+                                            ${{ service.price }}
+                                        </span>
+                                    </div>
+                                    <h3 class="text-base font-bold text-slate-900 group-hover:text-brand-600 transition-colors">
+                                        {{ service.name }}
+                                    </h3>
+                                    <p class="text-xs text-slate-500 mt-1 line-clamp-2">
+                                        {{ service.description || 'Professional session tailored to your requirements.' }}
+                                    </p>
+                                </div>
+
+                                <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                                    <span class="inline-flex items-center gap-1 font-medium">
+                                        <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        {{ service.duration_minutes }} Minutes
+                                    </span>
+                                    <span v-if="service.addons?.length" class="text-brand-600 font-medium">
+                                        {{ service.addons.length }} add-ons available
+                                    </span>
+                                </div>
+                            </button>
+                        </div>
+
+                        <div v-else class="text-center py-16 px-6">
+                            <p class="text-sm text-slate-500">No active services currently listed for this business.</p>
+                        </div>
+                    </div>
+
+                    <!-- =========================================================
+                         STEP 2: ENHANCEMENTS & ADD-ONS (Optional)
+                         ========================================================= -->
+                    <div v-else-if="currentStep === 2" class="space-y-6">
+                        <div class="flex items-center justify-between pb-2">
+                            <div class="flex items-center gap-3">
+                                <button
+                                    @click="currentStep = 1"
+                                    type="button"
+                                    class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                                    </svg>
+                                </button>
+                                <div>
+                                    <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 font-display">
+                                        Customize with Add-ons
+                                    </h2>
+                                    <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
+                                        Enhance your {{ selectedService?.name }} appointment (optional).
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div
+                                v-for="addon in selectedService?.addons"
+                                :key="addon.id"
+                                @click="toggleAddon(addon)"
+                                :class="[
+                                    'p-5 rounded-2xl border cursor-pointer transition-all flex items-center justify-between group',
+                                    selectedAddons.find(a => a.id === addon.id)
+                                        ? 'bg-brand-50 border-brand-500 ring-2 ring-brand-500/20 shadow-xs'
+                                        : 'bg-white border-slate-200 hover:border-slate-300'
+                                ]"
+                            >
+                                <div class="flex items-center gap-3.5">
+                                    <div
+                                        :class="[
+                                            'w-5 h-5 rounded-md flex items-center justify-center border transition-colors',
+                                            selectedAddons.find(a => a.id === addon.id)
+                                                ? 'bg-brand-600 border-brand-600 text-white'
+                                                : 'border-slate-300 bg-white'
+                                        ]"
+                                    >
+                                        <svg v-if="selectedAddons.find(a => a.id === addon.id)" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-semibold text-slate-900">{{ addon.name }}</h4>
+                                        <p class="text-xs text-slate-500">+{{ addon.duration_minutes }} minutes</p>
+                                    </div>
+                                </div>
+                                <span class="text-sm font-bold text-brand-600">+${{ addon.price }}</span>
+                            </div>
+                        </div>
+
+                        <div class="pt-6 border-t border-slate-100 flex items-center justify-between">
+                            <div>
+                                <span class="text-xs text-slate-500">Subtotal</span>
+                                <p class="text-xl font-bold text-slate-900 font-display">${{ totalPrice }}</p>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <button
+                                    type="button"
+                                    @click="currentStep = 3"
+                                    class="px-5 py-2.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                                >
+                                    Skip Add-ons
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="currentStep = 3"
+                                    class="px-6 py-2.5 rounded-xl text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white shadow-sm shadow-brand-500/25 transition-all"
+                                >
+                                    Continue to Specialist
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- =========================================================
+                         STEP 3: SELECT SPECIALIST
+                         ========================================================= -->
+                    <div v-else-if="currentStep === 3" class="space-y-6">
+                        <div class="flex items-center gap-3 pb-2">
+                            <button
+                                @click="currentStep = (selectedService?.addons?.length > 0 ? 2 : 1)"
+                                type="button"
+                                class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                                </svg>
+                            </button>
+                            <div>
+                                <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 font-display">
+                                    Select Specialist
+                                </h2>
+                                <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
+                                    Choose the team member you would like to handle your session.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                            <button
+                                v-for="member in staff"
+                                :key="member.id"
+                                type="button"
+                                @click="selectStaff(member.id)"
+                                :class="[
+                                    'p-6 rounded-2xl border text-center transition-all duration-200 flex flex-col items-center hover:shadow-card group',
+                                    form.staff_id === member.id
+                                        ? 'bg-brand-50/50 border-brand-500 ring-2 ring-brand-500/20'
+                                        : 'bg-white border-slate-200/80 hover:border-brand-400'
+                                ]"
+                            >
+                                <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-slate-900 to-indigo-900 text-white font-bold text-xl flex items-center justify-center mb-4 shadow-md group-hover:scale-105 transition-transform">
+                                    {{ member.name.charAt(0).toUpperCase() }}
+                                </div>
+                                <h3 class="text-sm font-bold text-slate-900 group-hover:text-brand-600 transition-colors">
+                                    {{ member.name }}
+                                </h3>
+                                <span class="inline-flex mt-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">
+                                    {{ member.role || 'Certified Specialist' }}
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- =========================================================
+                         STEP 4: SELECT DATE & TIME
+                         ========================================================= -->
+                    <div v-else-if="currentStep === 4" class="space-y-6">
+                        <div class="flex items-center gap-3 pb-2">
+                            <button
+                                @click="currentStep = 3"
+                                type="button"
+                                class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                                </svg>
+                            </button>
+                            <div>
+                                <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 font-display">
+                                    Select Date & Time
+                                </h2>
+                                <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
+                                    Pick an available date and booking interval with {{ selectedStaff?.name }}.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                            <!-- Date Selector (5 cols) -->
+                            <div class="lg:col-span-5 p-6 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-4">
+                                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500">
+                                    1. Choose Appointment Date
+                                </label>
+                                <input
+                                    type="date"
+                                    v-model="selectedDate"
+                                    @change="fetchSlots"
+                                    :min="new Date().toISOString().split('T')[0]"
+                                    class="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all cursor-pointer shadow-xs"
+                                />
+                                <p class="text-xs text-slate-500">
+                                    Available slots will dynamically calculate based on duration ({{ totalDuration }} mins).
+                                </p>
+                            </div>
+
+                            <!-- Time Slots (7 cols) -->
+                            <div class="lg:col-span-7 space-y-4">
+                                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500">
+                                    2. Available Time Slots
+                                </label>
+
+                                <div v-if="loadingSlots" class="py-16 text-center">
+                                    <div class="w-8 h-8 border-3 border-brand-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                                    <p class="text-xs text-slate-500 font-medium">Checking available calendar windows...</p>
+                                </div>
+
+                                <div v-else-if="availableSlots.length > 0" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                                    <button
+                                        v-for="slot in availableSlots"
+                                        :key="slot.time"
+                                        type="button"
+                                        @click="selectSlot(slot.time)"
+                                        :class="[
+                                            'py-3 px-4 rounded-xl text-xs font-semibold transition-all shadow-xs border',
+                                            form.start_time === slot.time
+                                                ? 'bg-brand-600 text-white border-brand-600 shadow-md shadow-brand-500/30'
+                                                : 'bg-white text-slate-700 border-slate-200 hover:border-brand-500 hover:bg-brand-50/50'
+                                        ]"
+                                    >
+                                        {{ slot.formatted }}
+                                    </button>
+                                </div>
+
+                                <div v-else class="text-center py-16 px-6 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
+                                    <svg class="w-8 h-8 text-slate-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <p class="text-xs font-semibold text-slate-700">No slots available on this date</p>
+                                    <p class="text-xs text-slate-500 mt-1">Please select another date to view open windows.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-6 border-t border-slate-100 flex items-center justify-between">
+                            <div v-if="form.start_time" class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                <span class="text-xs font-semibold text-slate-800">
+                                    {{ selectedDate }} at {{ form.start_time }}
+                                </span>
+                            </div>
+                            <div v-else class="text-xs text-slate-400">
+                                Select a slot above to proceed
+                            </div>
+
+                            <button
+                                type="button"
+                                @click="currentStep = 5"
+                                :disabled="!form.start_time"
+                                class="px-6 py-2.5 rounded-xl text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white shadow-sm shadow-brand-500/25 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                                Review Details &rarr;
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- =========================================================
+                         STEP 5: CONFIRM & SUBMIT
+                         ========================================================= -->
+                    <div v-else-if="currentStep === 5" class="max-w-2xl mx-auto space-y-6">
+                        <div class="text-center space-y-1">
+                            <h2 class="text-2xl font-bold tracking-tight text-slate-900 font-display">
+                                Review & Confirm Appointment
+                            </h2>
+                            <p class="text-xs sm:text-sm text-slate-500">
+                                Please verify your appointment summary before finalizing.
+                            </p>
+                        </div>
+
+                        <!-- Summary Card -->
+                        <div class="bg-slate-50 rounded-2xl border border-slate-200/80 p-6 space-y-4 text-left">
+                            <div class="flex items-start justify-between pb-4 border-b border-slate-200/70">
+                                <div>
+                                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Service</span>
+                                    <h3 class="text-lg font-bold text-slate-900">{{ selectedService?.name }}</h3>
+                                    <p class="text-xs text-slate-500 mt-0.5">{{ totalDuration }} minutes total duration</p>
+                                </div>
+                                <span class="text-2xl font-extrabold text-brand-600 font-display">${{ totalPrice }}</span>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4 text-xs">
+                                <div>
+                                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Specialist</span>
+                                    <p class="font-semibold text-slate-800 mt-0.5">{{ selectedStaff?.name }}</p>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Scheduled Time</span>
+                                    <p class="font-semibold text-slate-800 mt-0.5">{{ selectedDate }} @ {{ form.start_time }}</p>
+                                </div>
+                            </div>
+
+                            <div v-if="selectedAddons.length > 0" class="pt-3 border-t border-slate-200/70">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2">Selected Add-ons</span>
+                                <div class="space-y-1 text-xs">
+                                    <div v-for="addon in selectedAddons" :key="addon.id" class="flex items-center justify-between text-slate-700">
+                                        <span>+ {{ addon.name }} ({{ addon.duration_minutes }}m)</span>
+                                        <span class="font-semibold">+${{ addon.price }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Client Notes -->
+                        <div class="text-left space-y-2">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">
+                                Special Requests or Notes (Optional)
+                            </label>
+                            <textarea
+                                v-model="form.notes"
+                                rows="3"
+                                placeholder="Let us know if you have any preferences or instructions..."
+                                class="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all placeholder:text-slate-400 shadow-xs"
+                            ></textarea>
+                        </div>
+
+                        <!-- Auth Verification Notification if Guest -->
+                        <div v-if="!authUser" class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-left text-xs text-amber-800 flex items-start gap-3">
+                            <svg class="w-5 h-5 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <div>
+                                <span class="font-bold">Authentication Required:</span>
+                                <span> You will be prompted to sign in or create an account to secure this appointment.</span>
+                            </div>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="flex items-center justify-between pt-4">
+                            <button
+                                type="button"
+                                @click="currentStep = 4"
+                                class="px-5 py-2.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                            >
+                                Back
+                            </button>
+
+                            <button
+                                type="button"
+                                @click="submitBooking"
+                                :disabled="form.processing"
+                                class="px-8 py-3 rounded-xl text-xs font-bold uppercase tracking-wider bg-brand-600 hover:bg-brand-700 text-white shadow-md shadow-brand-500/25 transition-all active:scale-[0.98] disabled:opacity-50"
+                            >
+                                <span v-if="form.processing">Securing Booking...</span>
+                                <span v-else>Confirm & Book Appointment</span>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+
+        <!-- =========================================================
+             4. INTERACTIVE BOOKING SUCCESS MODAL
+             ========================================================= -->
+        <Transition
+            enter-active-class="transition-opacity duration-300 ease-out"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-active-class="transition-opacity duration-200 ease-in"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+        >
+            <div
+                v-if="bookingSuccess"
+                class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+            >
+                <div class="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl border border-slate-100 text-center space-y-6 animate-fadeIn">
+                    <div class="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto shadow-md shadow-emerald-500/10">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+
+                    <div class="space-y-1">
+                        <h3 class="text-2xl font-bold text-slate-900 font-display">Appointment Confirmed!</h3>
+                        <p class="text-xs text-slate-500">
+                            Your session has been successfully booked with {{ business.name }}.
+                        </p>
+                    </div>
+
+                    <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 text-left text-xs space-y-2">
+                        <div class="flex justify-between">
+                            <span class="text-slate-500">Service:</span>
+                            <span class="font-semibold text-slate-900">{{ confirmedBookingData?.service }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-500">Specialist:</span>
+                            <span class="font-semibold text-slate-900">{{ confirmedBookingData?.staff }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-500">Date & Time:</span>
+                            <span class="font-semibold text-slate-900">{{ confirmedBookingData?.date }} @ {{ confirmedBookingData?.time }}</span>
+                        </div>
+                        <div class="flex justify-between pt-2 border-t border-slate-200 text-sm">
+                            <span class="font-bold text-slate-700">Total:</span>
+                            <span class="font-extrabold text-brand-600">${{ confirmedBookingData?.total }}</span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <a
+                            :href="googleCalendarLink"
+                            target="_blank"
+                            class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors shadow-xs"
+                        >
+                            <svg class="w-4 h-4 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span>Add to Google Calendar</span>
+                        </a>
+
+                        <div class="flex gap-2">
+                            <Link
+                                :href="route('customer.dashboard')"
+                                class="flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white shadow-xs transition-colors"
+                            >
+                                View My Agenda
+                            </Link>
+                            <button
+                                @click="resetFlow"
+                                class="flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                            >
+                                Book Another
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Transition>
+
     </div>
 </template>
-
-<style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800;900&display=swap');
-
-:deep(body),
-:deep(input),
-:deep(textarea),
-:deep(h1),
-:deep(h2),
-:deep(h3),
-:deep(h4),
-:deep(p),
-:deep(span),
-:deep(button) {
-    font-family: 'Space Grotesk', sans-serif !important;
-    -webkit-font-smoothing: antialiased;
-}
-
-.fade-enter-active,
-.fade-leave-active {
-    transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.fade-enter-from,
-.fade-leave-to {
-    opacity: 0;
-    transform: scale(0.98) translateY(20px);
-}
-
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(60px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.animate-slideUp {
-    animation: slideUp 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.shadow-inner {
-    box-shadow: inset 0 6px 16px 0 rgba(0, 0, 0, 0.08);
-}
-
-input[type="date"]::-webkit-calendar-picker-indicator {
-    cursor: pointer;
-    filter: invert(0.1) brightness(0.5);
-    width: 24px;
-    height: 24px;
-}
-</style>

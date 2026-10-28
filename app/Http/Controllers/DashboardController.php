@@ -30,16 +30,36 @@ class DashboardController extends Controller
         // ২. বিজনেস ওনার লজিক (Business Operations)
         if ($user->role === 'owner' || $user->business()->exists()) {
             $business = $user->business;
-            if (!$business)
+            if (!$business) {
                 return redirect()->route('onboarding.index');
+            }
+
+            // Generate last 7 days chart data
+            $days = collect(range(6, 0))->map(function ($daysAgo) use ($business) {
+                $date = Carbon::today()->subDays($daysAgo);
+                $count = $business->bookings()->whereDate('booking_date', $date->toDateString())->count();
+                return [
+                    'label' => $date->format('D, M j'),
+                    'bookings' => $count,
+                ];
+            });
 
             return Inertia::render('Dashboard', [
                 'stats' => [
                     'total_bookings' => $business->bookings()->count(),
                     'pending_bookings' => $business->bookings()->where('status', 'pending')->count(),
+                    'confirmed_bookings' => $business->bookings()->where('status', 'confirmed')->count(),
+                    'completed_bookings' => $business->bookings()->where('status', 'completed')->count(),
+                    'services_count' => $business->services()->count(),
+                    'staff_count' => $business->staff()->count(),
                     'total_earnings' => number_format($business->bookings()->whereIn('status', ['confirmed', 'completed'])->join('services', 'bookings.service_id', '=', 'services.id')->sum('services.price'), 2)
                 ],
-                'business' => $business
+                'business' => $business,
+                'chartData' => [
+                    'labels' => $days->pluck('label'),
+                    'bookings' => $days->pluck('bookings'),
+                ],
+                'recentBookings' => $business->bookings()->with(['user', 'service', 'staff'])->latest()->take(6)->get()
             ]);
         }
 

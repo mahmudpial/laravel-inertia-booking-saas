@@ -1,22 +1,16 @@
 <script setup>
-/**
- * System Configuration Hub v4.2.0
- *
- * CORE SYSTEMS:
- * 1. Runtime Snapshot: Read-only view of the active app/env configuration.
- * 2. Service Drivers: Mail, queue, session, cache and filesystem backends.
- *
- * This is intentionally read-only for now — mutating live config from the
- * UI (SMTP creds, maintenance mode, etc.) needs its own guarded write path
- * and isn't wired up yet.
- */
-
 import SovereignLayout from '@/Layouts/SovereignLayout.vue';
 import { Head } from '@inertiajs/vue3';
 
 const props = defineProps({
-    runtime: Object,
-    services: Object,
+    runtime: {
+        type: Object,
+        default: () => ({})
+    },
+    services: {
+        type: Object,
+        default: () => ({})
+    },
 });
 
 const runtimeRows = [
@@ -26,129 +20,93 @@ const runtimeRows = [
     { key: 'app_url', label: 'App URL' },
     { key: 'app_timezone', label: 'Timezone' },
     { key: 'php_version', label: 'PHP Version' },
-    { key: 'laravel_version', label: 'Laravel Version' },
+    { key: 'laravel_version', label: 'Laravel Framework' },
 ];
 
 const serviceRows = [
     { key: 'database_driver', label: 'Database Driver' },
-    { key: 'mail_driver', label: 'Mail Driver' },
-    { key: 'mail_from', label: 'Mail From Address' },
     { key: 'queue_connection', label: 'Queue Connection' },
-    { key: 'session_driver', label: 'Session Driver' },
-    { key: 'filesystem_disk', label: 'Filesystem Disk' },
     { key: 'cache_store', label: 'Cache Store' },
+    { key: 'session_driver', label: 'Session Driver' },
+    { key: 'filesystem_disk', label: 'Storage Disk' },
+    { key: 'mail_driver', label: 'Mail Driver' },
+    { key: 'mail_from', label: 'Default Mailer From' },
 ];
 </script>
 
 <template>
-
-    <Head title="System Config | Sovereign Oversight" />
+    <Head title="System Runtime Configuration — Sovereign Control" />
 
     <SovereignLayout>
-        <div class="space-y-16 animate-fadeIn">
-
-            <!-- HEADER -->
-            <div class="space-y-6">
-                <div
-                    class="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 border border-indigo-100 rounded-full shadow-sm">
-                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></span>
-                    <span class="text-[9px] font-black uppercase tracking-[0.4em] text-indigo-600">Read-only runtime
-                        snapshot</span>
+        <div class="space-y-8 max-w-5xl mx-auto pb-16">
+            <!-- Header -->
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                        Read-Only Runtime Snapshot
+                    </span>
                 </div>
-                <h1 class="text-7xl lg:text-9xl font-black tracking-tighter leading-[0.8] text-[#09090B] uppercase">
-                    System <br /> <span class="text-indigo-600">Config.</span>
+                <h1 class="text-2xl sm:text-3xl font-display font-extrabold text-slate-900 tracking-tight">
+                    System Runtime Configuration
                 </h1>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                <!-- RUNTIME -->
-                <div class="bg-white rounded-[4rem] border border-slate-200/60 shadow-2xl overflow-hidden">
-                    <div class="px-12 py-12 border-b border-slate-100 bg-slate-50/40">
-                        <h3 class="text-2xl font-black text-[#09090B] tracking-tighter uppercase">Runtime Environment
-                        </h3>
-                    </div>
-                    <div class="divide-y divide-slate-50">
-                        <div v-for="row in runtimeRows" :key="row.key"
-                            class="flex items-center justify-between px-12 py-7">
-                            <span class="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">{{ row.label
-                            }}</span>
-                            <span v-if="typeof runtime?.[row.key] === 'boolean'"
-                                class="px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest"
-                                :class="runtime[row.key] ? 'bg-amber-50 text-amber-600 border border-amber-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'">
-                                {{ runtime[row.key] ? 'Enabled' : 'Disabled' }}
-                            </span>
-                            <span v-else
-                                class="text-sm font-black text-[#09090B] tracking-tight truncate max-w-[220px]">
-                                {{ runtime?.[row.key] ?? '—' }}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- SERVICES -->
-                <div class="bg-[#09090B] rounded-[4rem] border border-white/5 shadow-2xl overflow-hidden relative">
-                    <div
-                        class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,#4f46e522_0%,transparent_70%)]">
-                    </div>
-                    <div class="relative z-10 px-12 py-12 border-b border-white/5">
-                        <h3 class="text-2xl font-black text-white tracking-tighter uppercase">Service Drivers</h3>
-                    </div>
-                    <div class="relative z-10 divide-y divide-white/5">
-                        <div v-for="row in serviceRows" :key="row.key"
-                            class="flex items-center justify-between px-12 py-7">
-                            <span class="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">{{ row.label
-                            }}</span>
-                            <span
-                                class="text-sm font-black text-indigo-400 tracking-tight uppercase truncate max-w-[220px]">
-                                {{ services?.[row.key] ?? '—' }}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-amber-50 border border-amber-100 rounded-[3rem] p-10 flex items-start gap-6">
-                <div
-                    class="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center shrink-0 text-white font-black">
-                    !</div>
-                <p class="text-xs font-bold text-amber-700 leading-relaxed uppercase tracking-widest">
-                    This panel is read-only. Editing SMTP credentials, storage endpoints, or maintenance mode from
-                    here isn't implemented yet — config changes still go through <code class="font-black">.env</code>.
+                <p class="text-sm text-slate-500 mt-1">
+                    Current active runtime environment, driver bindings, and framework settings.
                 </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Runtime Card -->
+                <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xs space-y-4">
+                    <div class="flex items-center gap-3 pb-4 border-b border-slate-100">
+                        <div class="w-9 h-9 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                        </div>
+                        <div>
+                            <h2 class="font-display font-bold text-sm text-slate-900">Application Runtime</h2>
+                            <p class="text-[11px] text-slate-400">Environment & engine variables</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2.5">
+                        <div
+                            v-for="row in runtimeRows"
+                            :key="row.key"
+                            class="flex items-center justify-between py-2 border-b border-slate-50 last:border-b-0 text-xs"
+                        >
+                            <span class="text-slate-500 font-medium">{{ row.label }}</span>
+                            <span class="font-mono font-semibold text-slate-900 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
+                                {{ runtime[row.key] ?? 'N/A' }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Service Drivers Card -->
+                <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xs space-y-4">
+                    <div class="flex items-center gap-3 pb-4 border-b border-slate-100">
+                        <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7C5 4 4 5 4 7z"/></svg>
+                        </div>
+                        <div>
+                            <h2 class="font-display font-bold text-sm text-slate-900">Service Drivers & Connections</h2>
+                            <p class="text-[11px] text-slate-400">Storage, database & background workers</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2.5">
+                        <div
+                            v-for="row in serviceRows"
+                            :key="row.key"
+                            class="flex items-center justify-between py-2 border-b border-slate-50 last:border-b-0 text-xs"
+                        >
+                            <span class="text-slate-500 font-medium">{{ row.label }}</span>
+                            <span class="font-mono font-semibold text-brand-700 bg-brand-50/50 px-2 py-0.5 rounded-md border border-brand-100">
+                                {{ services[row.key] ?? 'N/A' }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </SovereignLayout>
 </template>
-
-<style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap');
-
-:deep(body),
-:deep(h1),
-:deep(h2),
-:deep(h3),
-:deep(h4),
-:deep(span),
-:deep(p),
-:deep(button),
-:deep(a) {
-    font-family: 'Space Grotesk', sans-serif !important;
-    -webkit-font-smoothing: antialiased;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.animate-fadeIn {
-    animation: fadeIn 0.8s ease-out forwards;
-}
-</style>

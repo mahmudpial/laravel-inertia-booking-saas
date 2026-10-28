@@ -1,147 +1,134 @@
 <script setup>
-/**
- * Audit Ledger v4.2.0
- *
- * CORE SYSTEMS:
- * 1. Activity Feed: Chronological stream derived from business + booking timestamps.
- * 2. Event Classification: Tags each entry by node type and lifecycle stage.
- *
- * NOTE: There is no dedicated audit_logs table in the schema yet, this feed
- * is derived live from existing records (created_at / updated_at). It is a
- * good-enough activity trail for now; swap in a real audit table for formal
- * compliance/security logging later.
- */
-
 import SovereignLayout from '@/Layouts/SovereignLayout.vue';
 import { Head } from '@inertiajs/vue3';
+import { ref, computed } from 'vue';
 
 const props = defineProps({
-    events: Array,
+    events: {
+        type: Array,
+        default: () => []
+    },
 });
 
-// Full literal class strings (not built via concatenation) so Tailwind's
-// scanner can pick them up at build time.
+const filterType = ref('all'); // 'all', 'business', 'booking'
+
+const filteredEvents = computed(() => {
+    if (filterType.value === 'business') {
+        return props.events.filter(e => e.type?.startsWith('business'));
+    }
+    if (filterType.value === 'booking') {
+        return props.events.filter(e => e.type?.startsWith('booking'));
+    }
+    return props.events;
+});
+
 const typeMeta = (type) => {
     if (type?.startsWith('business')) {
-        return { dot: 'bg-indigo-500 text-indigo-500', badge: 'text-indigo-500 bg-indigo-500/10', label: 'Node' };
+        return { badge: 'bg-indigo-50 text-indigo-700 border-indigo-200', dot: 'bg-indigo-500', label: 'Workspace' };
     }
     if (type === 'booking.confirmed') {
-        return { dot: 'bg-indigo-500 text-indigo-500', badge: 'text-indigo-500 bg-indigo-500/10', label: 'Booking' };
+        return { badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', label: 'Confirmed' };
     }
     if (type === 'booking.completed') {
-        return { dot: 'bg-emerald-500 text-emerald-500', badge: 'text-emerald-500 bg-emerald-500/10', label: 'Booking' };
+        return { badge: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500', label: 'Completed' };
     }
     if (type === 'booking.canceled') {
-        return { dot: 'bg-rose-500 text-rose-500', badge: 'text-rose-500 bg-rose-500/10', label: 'Booking' };
+        return { badge: 'bg-rose-50 text-rose-700 border-rose-200', dot: 'bg-rose-500', label: 'Canceled' };
     }
-    return { dot: 'bg-amber-500 text-amber-500', badge: 'text-amber-500 bg-amber-500/10', label: 'Booking' };
+    return { badge: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500', label: 'Pending' };
 };
 </script>
 
 <template>
-
-    <Head title="Audit Ledger | Sovereign Oversight" />
+    <Head title="Security & Activity Audit Ledger — Sovereign Control" />
 
     <SovereignLayout>
-        <div class="space-y-16 animate-fadeIn">
-
-            <!-- HEADER -->
-            <div class="space-y-6">
-                <div
-                    class="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 border border-indigo-100 rounded-full shadow-sm">
-                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></span>
-                    <span class="text-[9px] font-black uppercase tracking-[0.4em] text-indigo-600">Live activity
-                        stream &middot; last {{ events?.length || 0 }} events</span>
+        <div class="space-y-8 max-w-5xl mx-auto pb-16">
+            <!-- Header -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                            Live Stream: Last {{ events.length }} events
+                        </span>
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-display font-extrabold text-slate-900 tracking-tight">
+                        Security & Activity Audit Ledger
+                    </h1>
+                    <p class="text-sm text-slate-500 mt-1">
+                        Chronological record of platform-wide workspace registrations, status changes, and booking lifecycle transitions.
+                    </p>
                 </div>
-                <h1 class="text-7xl lg:text-9xl font-black tracking-tighter leading-[0.8] text-[#09090B] uppercase">
-                    Audit <br /> <span class="text-indigo-600">Ledger.</span>
-                </h1>
-                <p class="text-slate-400 font-bold uppercase tracking-[0.4em] text-[10px] max-w-2xl">
-                    Chronological record of platform-wide node registrations and booking lifecycle transitions.
-                </p>
+
+                <!-- Filter Pills -->
+                <div class="flex items-center gap-1.5 bg-white border border-slate-200 p-1.5 rounded-xl shadow-xs">
+                    <button
+                        @click="filterType = 'all'"
+                        :class="[
+                            'px-3 py-1 rounded-lg text-xs font-semibold transition-all',
+                            filterType === 'all' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
+                        ]"
+                    >
+                        All Events
+                    </button>
+                    <button
+                        @click="filterType = 'business'"
+                        :class="[
+                            'px-3 py-1 rounded-lg text-xs font-semibold transition-all',
+                            filterType === 'business' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
+                        ]"
+                    >
+                        Workspaces
+                    </button>
+                    <button
+                        @click="filterType = 'booking'"
+                        :class="[
+                            'px-3 py-1 rounded-lg text-xs font-semibold transition-all',
+                            filterType === 'booking' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
+                        ]"
+                    >
+                        Bookings
+                    </button>
+                </div>
             </div>
 
-            <!-- TIMELINE -->
-            <div
-                class="bg-white rounded-[5rem] border border-slate-200/60 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.12)] overflow-hidden">
-                <div class="px-14 py-14 border-b border-slate-100 bg-slate-50/40">
-                    <h3 class="text-4xl font-black text-[#09090B] tracking-tighter uppercase leading-none">Event Stream
-                    </h3>
-                </div>
-
-                <div class="divide-y divide-slate-50">
-                    <div v-for="(event, idx) in events" :key="idx"
-                        class="group flex items-center gap-10 px-14 py-10 hover:bg-indigo-50/30 transition-colors">
-                        <div class="flex flex-col items-center gap-2 shrink-0">
-                            <div class="w-3 h-3 rounded-full shadow-[0_0_10px_currentColor]"
-                                :class="typeMeta(event.type).dot"></div>
-                            <div v-if="idx !== events.length - 1" class="w-px h-10 bg-slate-100"></div>
+            <!-- Activity Timeline -->
+            <div class="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-8 shadow-xs">
+                <div v-if="filteredEvents.length > 0" class="space-y-6">
+                    <div
+                        v-for="(event, idx) in filteredEvents"
+                        :key="idx"
+                        class="flex items-start gap-4 pb-6 border-b border-slate-100 last:border-b-0 last:pb-0"
+                    >
+                        <!-- Timeline Dot / Icon -->
+                        <div class="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0 mt-0.5">
+                            <span :class="['w-2.5 h-2.5 rounded-full', typeMeta(event.type).dot]"></span>
                         </div>
 
-                        <div class="w-28 shrink-0">
-                            <span
-                                class="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border border-slate-100"
-                                :class="typeMeta(event.type).badge">
-                                {{ typeMeta(event.type).label }}
-                            </span>
-                        </div>
-
+                        <!-- Content Block -->
                         <div class="flex-1 min-w-0">
-                            <p class="text-lg font-black text-[#09090B] tracking-tight uppercase truncate">{{
-                                event.label }}</p>
-                            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 truncate">{{
-                                event.detail }} &middot; {{ event.actor }}</p>
-                        </div>
+                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="text-sm font-bold text-slate-900">{{ event.label }}</span>
+                                    <span :class="['px-2 py-0.5 rounded-md text-[10px] font-semibold border', typeMeta(event.type).badge]">
+                                        {{ typeMeta(event.type).label }}
+                                    </span>
+                                </div>
+                                <span class="text-xs text-slate-400 font-mono">{{ event.timestamp }}</span>
+                            </div>
 
-                        <div class="shrink-0 text-right">
-                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{
-                                event.timestamp }}</p>
+                            <p class="text-xs text-slate-600 mt-1">
+                                <span class="font-medium text-slate-800">{{ event.detail }}</span>
+                                <span class="text-slate-400 ml-2">by {{ event.actor }}</span>
+                            </p>
                         </div>
                     </div>
                 </div>
 
-                <div v-if="!events?.length" class="p-40 text-center">
-                    <p class="text-xs font-black text-slate-300 uppercase tracking-[0.8em]">No Activity Indexed Yet</p>
+                <div v-else class="text-center py-16">
+                    <p class="text-sm text-slate-500 font-medium">No activity events recorded yet.</p>
                 </div>
-            </div>
-
-            <div class="text-center">
-                <p class="text-[10px] font-black text-slate-300 uppercase tracking-[1em]">
-                    Derived from live records &middot; not a formal compliance audit trail</p>
             </div>
         </div>
     </SovereignLayout>
 </template>
-
-<style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap');
-
-:deep(body),
-:deep(h1),
-:deep(h2),
-:deep(h3),
-:deep(h4),
-:deep(span),
-:deep(p),
-:deep(button),
-:deep(a) {
-    font-family: 'Space Grotesk', sans-serif !important;
-    -webkit-font-smoothing: antialiased;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.animate-fadeIn {
-    animation: fadeIn 0.8s ease-out forwards;
-}
-</style>

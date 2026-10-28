@@ -1,26 +1,21 @@
 <script setup>
 /**
- * Command Center v4.2.0-Alpha
- * 
- * CORE SYSTEMS:
- * 1. Revenue Trajectory: Real-time 7-day synchronization.
- * 2. Operational KPIs: Macro-scale data quantization.
- * 3. System Ledger: Verified transactional session logs.
- * 4. Node Integrity: Real-time hardware/infrastructure monitoring.
+ * SmartBooking Business Command Center
+ * Modern SaaS Dashboard Architecture
  * 
  * @author Pial Mahmud (System Architect)
  */
 
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
-import { computed } from 'vue';
-import { Line, Doughnut } from 'vue-chartjs';
+import { computed, ref } from 'vue';
+import { Line } from 'vue-chartjs';
 import {
     Chart as ChartJS, Title, Tooltip, Legend, LineElement,
-    CategoryScale, LinearScale, PointElement, ArcElement, Filler
+    CategoryScale, LinearScale, PointElement, Filler
 } from 'chart.js';
 
-ChartJS.register(Title, Tooltip, Legend, LineElement, CategoryScale, LinearScale, PointElement, ArcElement, Filler);
+ChartJS.register(Title, Tooltip, Legend, LineElement, CategoryScale, LinearScale, PointElement, Filler);
 
 const props = defineProps({
     stats: Object,
@@ -29,335 +24,452 @@ const props = defineProps({
     recentBookings: Array
 });
 
-// Chart 01: Revenue Trajectory (Clinical Indigo)
-const revenueChartData = computed(() => ({
-    labels: props.chartData?.labels || [],
+const copied = ref(false);
+
+const bookingUrl = computed(() => {
+    if (typeof window !== 'undefined' && props.business?.slug) {
+        return `${window.location.origin}/b/${props.business.slug}`;
+    }
+    return '';
+});
+
+const copyLink = async () => {
+    if (!bookingUrl.value) return;
+    try {
+        await navigator.clipboard.writeText(bookingUrl.value);
+        copied.value = true;
+        setTimeout(() => {
+            copied.value = false;
+        }, 3000);
+    } catch (e) {
+        console.error('Failed to copy', e);
+    }
+};
+
+// 7-Day Chart Data
+const lineChartData = computed(() => ({
+    labels: props.chartData?.labels?.length ? props.chartData.labels : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     datasets: [{
-        label: 'Revenue',
-        data: props.chartData?.revenue || [],
+        label: 'Bookings',
+        data: props.chartData?.bookings?.length ? props.chartData.bookings : [0, 0, 0, 0, 0, 0, 0],
         borderColor: '#4f46e5',
-        backgroundColor: 'rgba(79, 70, 229, 0.05)',
+        backgroundColor: 'rgba(79, 70, 229, 0.08)',
         fill: true,
         tension: 0.4,
-        pointBackgroundColor: '#09090B',
+        pointBackgroundColor: '#ffffff',
         pointBorderColor: '#4f46e5',
+        pointBorderWidth: 2,
+        pointRadius: 4,
         pointHoverRadius: 6,
-        borderWidth: 4
+        borderWidth: 2.5
     }]
 }));
 
 const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
+    plugins: {
+        legend: { display: false },
+        tooltip: {
+            backgroundColor: '#0f172a',
+            titleFont: { family: 'Plus Jakarta Sans', size: 12 },
+            bodyFont: { family: 'Plus Jakarta Sans', size: 12 },
+            padding: 10,
+            cornerRadius: 8,
+            displayColors: false,
+        }
+    },
     scales: {
-        y: { display: false },
-        x: { grid: { display: false }, ticks: { font: { weight: 'bold', size: 10 }, color: '#94a3b8' } }
+        y: {
+            beginAtZero: true,
+            ticks: { stepSize: 1, color: '#94a3b8', font: { size: 11 } },
+            grid: { color: 'rgba(226, 232, 240, 0.6)' }
+        },
+        x: {
+            grid: { display: false },
+            ticks: { color: '#94a3b8', font: { size: 11 } }
+        }
     }
 };
 
-const bookingUrl = computed(() => `${window.location.origin}/b/${props.business?.slug}`);
-const copyLink = () => {
-    navigator.clipboard.writeText(bookingUrl.value);
-    alert('✅ Deployment URL secured to clipboard.');
+const getStatusBadge = (status) => {
+    const s = (status || '').toLowerCase();
+    if (s === 'confirmed') return 'bg-emerald-50 text-emerald-700 border-emerald-200/60';
+    if (s === 'pending') return 'bg-amber-50 text-amber-700 border-amber-200/60';
+    if (s === 'completed') return 'bg-indigo-50 text-indigo-700 border-indigo-200/60';
+    return 'bg-slate-50 text-slate-600 border-slate-200';
 };
-const formatMoney = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(parseFloat(val || 0));
 </script>
 
 <template>
-
-    <Head title="Command Center | SmartBooking Intelligence" />
+    <Head title="Business Dashboard | SmartBooking" />
 
     <AuthenticatedLayout>
-        <div
-            class="relative min-h-screen bg-[#FDFDFF] font-sans antialiased text-[#09090B] pb-48 selection:bg-indigo-600 selection:text-white">
+        <div class="space-y-8">
 
-            <!-- ARCHITECTURAL BLUEPRINT BACKGROUND -->
-            <div class="fixed inset-0 z-0 pointer-events-none">
-                <div
-                    class="absolute inset-0 bg-[radial-gradient(#e5e7eb_1.5px,transparent_1.5px)] [background-size:32px_32px] opacity-40">
-                </div>
-                <div
-                    class="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]">
-                </div>
-            </div>
-
-            <div class="relative z-10 max-w-7xl mx-auto px-6 pt-16">
-
-                <!-- =========================================================
-                     EDITORIAL DISPATCH HEADER (Fixed White Space)
-                     ========================================================= -->
-                <div class="grid grid-cols-1 xl:grid-cols-12 gap-16 mb-24 items-start">
-                    <div class="xl:col-span-5 space-y-10 animate-slideUp">
-                        <div class="space-y-6">
-                            <div
-                                class="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 border border-indigo-100 rounded-full shadow-sm">
-                                <span class="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></span>
-                                <span
-                                    class="text-[9px] font-black uppercase tracking-[0.3em] text-indigo-600">Administrative
-                                    Dispatch Node Active</span>
-                            </div>
-                            <h1 class="text-8xl lg:text-9xl font-black tracking-tighter leading-[0.8] text-[#09090B]">
-                                Control <br />
-                                <span
-                                    class="text-indigo-600 font-medium text-5xl lg:text-8xl uppercase tracking-tighter">Hub.</span>
-                            </h1>
-                        </div>
-
-                        <!-- TACTICAL LINK MODULE -->
-                        <div
-                            class="bg-white border border-slate-200/60 p-2.5 rounded-[2rem] shadow-2xl flex items-center gap-4 w-fit">
-                            <div class="px-6 py-4 bg-slate-50 rounded-[1.5rem] border border-slate-100 shadow-inner">
-                                <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Node: {{
-                                    business?.slug }}</span>
-                            </div>
-                            <button @click="copyLink"
-                                class="px-8 py-4 bg-[#09090B] text-white text-[10px] font-black uppercase tracking-[0.3em] rounded-[1.5rem] hover:bg-indigo-600 transition-all active:scale-95 shadow-xl">
-                                Push Link
-                            </button>
-                        </div>
+            <!-- =========================================================
+                 1. TOP GREETING & HERO HEADER
+                 ========================================================= -->
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-2 border-b border-slate-200/60">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
+                            Live System
+                        </span>
+                        <span class="text-xs text-slate-400 font-medium">&bull;</span>
+                        <span class="text-xs text-slate-500 font-medium">{{ business?.name }}</span>
                     </div>
-
-                    <!-- ADMINISTRATIVE INTELLIGENCE BRIEFING -->
-                    <div
-                        class="xl:col-span-7 bg-[#09090B] rounded-[4rem] p-10 lg:p-14 text-white shadow-2xl relative overflow-hidden group border border-white/5 animate-fadeIn">
-                        <div
-                            class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,#4f46e522_0%,transparent_70%)]">
-                        </div>
-                        <div class="relative z-10 space-y-10">
-                            <div class="flex items-center justify-between">
-                                <p class="text-[10px] font-black text-indigo-400 uppercase tracking-[0.5em]">Operations
-                                    Intelligence Briefing</p>
-                                <div class="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
-                                    <span
-                                        class="text-[8px] font-black uppercase tracking-widest text-emerald-400">AES-256
-                                        Encrypted Session</span>
-                                </div>
-                            </div>
-                            <h2 class="text-3xl lg:text-4xl font-black tracking-tighter uppercase leading-tight">
-                                Engineering <br /> Operational Throughput.</h2>
-                            <article class="text-slate-400 text-lg leading-relaxed space-y-6 font-medium italic">
-                                <p>
-                                    Welcome to the Command Hub. This interface is engineered to provide a 360-degree
-                                    oversight of your session packets and revenue trajectory. Efficiency in a booking
-                                    ecosystem is determined by the quantization of available time slots against
-                                    specialist roster capacity.
-                                </p>
-                                <p>
-                                    Our priority is **Maximum Confidentiality**. Every transaction indexed in the System
-                                    Ledger below is protected by Node-Sentinel encryption, ensuring that your
-                                    administrative data and customer privacy remain absolute.
-                                </p>
-                            </article>
-                        </div>
-                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 font-display">
+                        Business Overview
+                    </h1>
+                    <p class="text-sm text-slate-500 mt-1">
+                        Monitor your appointments, client bookings, and revenue metrics in real time.
+                    </p>
                 </div>
 
-                <!-- KPI TACTICAL PODS -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-                    <div v-for="(val, label) in { 'Yield Index': formatMoney(stats.total_earnings), 'Data Packets': stats.total_bookings, 'Review Queue': stats.pending_bookings }"
-                        :key="label"
-                        class="group bg-white border border-slate-200/60 p-12 rounded-[4rem] shadow-xl hover:-translate-y-2 transition-all duration-500">
-                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em] mb-6">{{ label }}</p>
-                        <h3
-                            class="text-6xl font-black text-[#09090B] tracking-tighter group-hover:text-indigo-600 transition-colors">
-                            {{ val }}</h3>
-                    </div>
-                </div>
-
-                <!-- INTELLIGENCE LAYER -->
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 mb-16">
-                    <!-- Revenue Trajectory Pod -->
-                    <div class="lg:col-span-8 bg-white border border-slate-200/60 rounded-[4rem] p-12 shadow-2xl">
-                        <div class="flex justify-between items-center mb-12">
-                            <div>
-                                <h3 class="text-3xl font-black text-[#09090B] tracking-tighter uppercase">Revenue
-                                    Trajectory</h3>
-                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-2">7-Day
-                                    Real-Time Operational Sync</p>
-                            </div>
-                        </div>
-                        <div class="h-80">
-                            <Line :data="revenueChartData" :options="chartOptions" />
-                        </div>
-                    </div>
-
-                    <!-- Sidebar Hub -->
-                    <div class="lg:col-span-4 space-y-10">
-                        <!-- Human Resources Tactical Pod -->
-                        <div
-                            class="bg-[#09090B] rounded-[3rem] p-12 text-white shadow-2xl relative overflow-hidden group border border-white/5">
-                            <div class="relative z-10">
-                                <p class="text-[10px] font-black text-indigo-400 uppercase tracking-[0.5em] mb-6">Staff
-                                    Deployment</p>
-                                <h4 class="text-4xl font-black mb-8 leading-[0.9] uppercase tracking-tighter">Team
-                                    <br /> Specialists.
-                                </h4>
-                                <Link :href="route('admin.staff.index')"
-                                    class="inline-flex items-center justify-center w-full py-6 bg-white text-[#09090B] rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.4em] shadow-xl hover:bg-indigo-600 hover:text-white transition-all active:scale-95">
-                                    Manage Roster
-                                </Link>
-                            </div>
-                            <div
-                                class="absolute -right-10 -bottom-10 w-48 h-48 bg-indigo-600/10 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-1000">
-                            </div>
-                        </div>
-
-                        <!-- System Integrity Pod -->
-                        <div class="bg-white border border-slate-200/60 rounded-[3.5rem] p-12 shadow-xl">
-                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em] mb-12">Node
-                                Integrity Report</p>
-                            <div class="space-y-10">
-                                <div v-for="(node, n) in ['Booking Engine', 'Database Node', 'Global CDN']" :key="n"
-                                    class="flex items-center justify-between">
-                                    <span class="text-[10px] font-black text-[#09090B] uppercase tracking-widest">{{
-                                        node }}</span>
-                                    <div class="flex items-center gap-3">
-                                        <div
-                                            class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.6)] animate-pulse">
-                                        </div>
-                                        <span
-                                            class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Secure</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- SYSTEM LEDGER -->
-                <div
-                    class="bg-white rounded-[5rem] border border-slate-200/60 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.1)] overflow-hidden animate-fadeIn">
-                    <div
-                        class="px-12 py-16 border-b border-slate-100 flex flex-col md:flex-row md:items-end justify-between gap-10 bg-slate-50/40">
-                        <div>
-                            <h3 class="text-4xl font-black text-[#09090B] tracking-tighter uppercase leading-none">
-                                System Ledger</h3>
-                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-4">Verified
-                                Transactional Session Logs (Real-time)</p>
-                        </div>
-                        <Link :href="route('admin.bookings.index')"
-                            class="px-12 py-6 bg-[#09090B] rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.4em] text-white hover:bg-indigo-600 transition-all shadow-2xl active:scale-95">
-                            Verify Full Queue</Link>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left">
-                            <tbody class="divide-y divide-slate-50">
-                                <tr v-for="booking in recentBookings" :key="booking.id"
-                                    class="group hover:bg-indigo-50/30 transition-colors">
-                                    <td class="px-14 py-14">
-                                        <div class="flex items-center gap-10">
-                                            <div
-                                                class="w-20 h-16 rounded-[2rem] bg-[#09090B] flex items-center justify-center font-black text-white text-2xl shadow-2xl group-hover:rotate-6 transition-all duration-500">
-                                                {{ (booking.user?.charAt(0) || 'U').toUpperCase() }}
-                                            </div>
-                                            <div>
-                                                <p
-                                                    class="text-3xl font-black text-[#09090B] tracking-tighter leading-none uppercase">
-                                                    {{ booking.user }}</p>
-                                                <p
-                                                    class="text-sm font-black text-indigo-600 uppercase tracking-[0.3em] mt-3">
-                                                    {{ booking.service }}</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-14 py-14">
-                                        <div
-                                            class="inline-flex items-center gap-3 px-5 py-2.5 bg-emerald-50 border border-emerald-100 rounded-full shadow-sm">
-                                            <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
-                                            <span
-                                                class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.25em]">{{
-                                                    booking.status }}</span>
-                                        </div>
-                                    </td>
-                                    <td class="px-14 py-14 text-right">
-                                        <p class="text-3xl font-black text-[#09090B] tracking-tighter leading-none">${{
-                                            booking.value }}</p>
-                                        <p
-                                            class="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-3">
-                                            Node ID: #{{ booking.id }}</p>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div v-if="!recentBookings?.length" class="p-40 text-center">
-                        <svg class="w-16 h-16 text-slate-200 mx-auto mb-10" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                <!-- Action Toolbar -->
+                <div class="flex flex-wrap items-center gap-3">
+                    <Link
+                        :href="route('admin.calendar.index')"
+                        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-xs transition-all active:scale-[0.98]"
+                    >
+                        <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        <p class="text-xs font-black text-slate-300 uppercase tracking-[0.8em]">Zero Transactional
-                            Packets Indexed</p>
+                        <span>Open Calendar</span>
+                    </Link>
+
+                    <Link
+                        :href="route('admin.services.index')"
+                        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-brand-600 text-white hover:bg-brand-700 shadow-sm shadow-brand-500/25 transition-all active:scale-[0.98]"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span>Manage Services</span>
+                    </Link>
+                </div>
+            </div>
+
+            <!-- =========================================================
+                 2. CLIENT BOOKING LINK SHARING WIDGET
+                 ========================================================= -->
+            <div class="p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-xl relative overflow-hidden">
+                <div class="absolute -right-10 -bottom-10 w-60 h-60 bg-brand-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div class="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold uppercase tracking-wider text-brand-300">Public Booking Gateway</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-brand-500/20 text-brand-300 border border-brand-500/30">Shareable</span>
+                        </div>
+                        <p class="text-sm font-medium text-slate-300">
+                            Give your clients this link to let them view your services and book appointments 24/7.
+                        </p>
+                    </div>
+
+                    <div class="flex items-center gap-2 w-full md:w-auto">
+                        <div class="flex-1 md:w-80 px-3.5 py-2 rounded-xl bg-white/10 border border-white/15 text-xs text-slate-200 font-mono truncate select-all">
+                            {{ bookingUrl }}
+                        </div>
+                        <button
+                            @click="copyLink"
+                            class="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-white text-slate-900 hover:bg-brand-50 transition-all shrink-0 active:scale-95 flex items-center gap-1.5 shadow-md"
+                        >
+                            <svg v-if="!copied" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                            </svg>
+                            <svg v-else class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span>{{ copied ? 'Copied!' : 'Copy Link' }}</span>
+                        </button>
+                        <a
+                            :href="bookingUrl"
+                            target="_blank"
+                            class="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors shrink-0"
+                            title="Open Preview"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- =========================================================
+                 3. ELEVATED METRIC KPI CARDS
+                 ========================================================= -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+
+                <!-- KPI: Total Revenue -->
+                <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:shadow-card transition-shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Gross Earnings</span>
+                        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <p class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-display">
+                            ${{ stats?.total_earnings || '0.00' }}
+                        </p>
+                        <p class="text-xs text-slate-500 flex items-center gap-1">
+                            <span class="text-emerald-600 font-semibold">&bull; Active</span>
+                            <span>from confirmed & completed</span>
+                        </p>
                     </div>
                 </div>
 
-                <!-- FOOTER METADATA -->
-                <div class="mt-40 text-center">
-                    <p class="text-[10px] font-black text-slate-300 uppercase tracking-[1.5em]">Sovereign Infrastructure
-                        v4.2.0 | All Data Synchronized via Sentinel Node</p>
+                <!-- KPI: Total Bookings -->
+                <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:shadow-card transition-shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Bookings</span>
+                        <div class="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <p class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-display">
+                            {{ stats?.total_bookings || 0 }}
+                        </p>
+                        <p class="text-xs text-slate-500">
+                            {{ stats?.confirmed_bookings || 0 }} confirmed, {{ stats?.completed_bookings || 0 }} finished
+                        </p>
+                    </div>
+                </div>
+
+                <!-- KPI: Pending Appointments -->
+                <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:shadow-card transition-shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Pending Review</span>
+                        <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <p class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-display">
+                            {{ stats?.pending_bookings || 0 }}
+                        </p>
+                        <p class="text-xs text-slate-500">
+                            {{ stats?.pending_bookings > 0 ? 'Requires owner response' : 'Queue cleared' }}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- KPI: Service & Staff Density -->
+                <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:shadow-card transition-shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Roster & Offerings</span>
+                        <div class="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <p class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-display">
+                            {{ stats?.services_count || 0 }} <span class="text-base font-normal text-slate-400">/ {{ stats?.staff_count || 0 }}</span>
+                        </p>
+                        <p class="text-xs text-slate-500">
+                            Active services & staff roster
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- =========================================================
+                 4. ANALYTICS & ACTIVITY GRID
+                 ========================================================= -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+                <!-- 7-Day Appointment Volume Chart (8 Cols) -->
+                <div class="lg:col-span-8 p-6 sm:p-7 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900 font-display">Appointment Volume Trend</h2>
+                            <p class="text-xs text-slate-500 mt-0.5">7-day rolling window of client booking activity</p>
+                        </div>
+                        <div class="px-2.5 py-1 rounded-md bg-slate-100 text-[11px] font-semibold text-slate-600">
+                            Last 7 Days
+                        </div>
+                    </div>
+
+                    <div class="h-64 sm:h-72 w-full">
+                        <Line :data="lineChartData" :options="chartOptions" />
+                    </div>
+                </div>
+
+                <!-- Quick Roster Overview & Shortcuts (4 Cols) -->
+                <div class="lg:col-span-4 space-y-5">
+                    <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
+                        <h2 class="text-base font-bold text-slate-900 font-display mb-4">Quick Shortcuts</h2>
+                        <div class="space-y-2.5">
+                            <Link
+                                :href="route('admin.bookings.index')"
+                                class="flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors group"
+                            >
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center text-xs font-bold">
+                                        Q
+                                    </div>
+                                    <span class="text-xs font-semibold text-slate-700 group-hover:text-slate-900">Manage Queue</span>
+                                </div>
+                                <svg class="w-4 h-4 text-slate-400 group-hover:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                </svg>
+                            </Link>
+
+                            <Link
+                                :href="route('admin.availability.index')"
+                                class="flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors group"
+                            >
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs font-bold">
+                                        H
+                                    </div>
+                                    <span class="text-xs font-semibold text-slate-700 group-hover:text-slate-900">Configure Hours</span>
+                                </div>
+                                <svg class="w-4 h-4 text-slate-400 group-hover:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                </svg>
+                            </Link>
+
+                            <Link
+                                :href="route('admin.staff.index')"
+                                class="flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors group"
+                            >
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center text-xs font-bold">
+                                        T
+                                    </div>
+                                    <span class="text-xs font-semibold text-slate-700 group-hover:text-slate-900">Staff Specialists</span>
+                                </div>
+                                <svg class="w-4 h-4 text-slate-400 group-hover:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                </svg>
+                            </Link>
+                        </div>
+                    </div>
+
+                    <!-- Business Profile Health -->
+                    <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Tenant Brand</span>
+                            <Link :href="route('admin.settings.edit')" class="text-xs font-semibold text-brand-600 hover:text-brand-700">Edit</Link>
+                        </div>
+                        <h3 class="text-sm font-bold text-slate-900 truncate">{{ business?.name }}</h3>
+                        <p class="text-xs text-slate-500 mt-1 line-clamp-2">{{ business?.description || 'No description provided.' }}</p>
+                        <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                            <span>Phone:</span>
+                            <span class="font-medium text-slate-700">{{ business?.phone || 'Not set' }}</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- =========================================================
+                 5. RECENT BOOKINGS FEED TABLE
+                 ========================================================= -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+                <div class="p-5 sm:p-6 border-b border-slate-200/60 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-900 font-display">Recent Client Bookings</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Latest appointment transactions placed across your business</p>
+                    </div>
+                    <Link
+                        :href="route('admin.bookings.index')"
+                        class="text-xs font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1"
+                    >
+                        <span>View All Bookings</span>
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </Link>
+                </div>
+
+                <div v-if="recentBookings?.length > 0" class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50/75 border-b border-slate-200/60 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                            <tr>
+                                <th class="py-3 px-6">Client</th>
+                                <th class="py-3 px-6">Service</th>
+                                <th class="py-3 px-6">Specialist</th>
+                                <th class="py-3 px-6">Schedule</th>
+                                <th class="py-3 px-6">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr v-for="booking in recentBookings" :key="booking.id" class="hover:bg-slate-50/60 transition-colors">
+                                <td class="py-4 px-6">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0">
+                                            {{ (booking.user?.name || 'G').charAt(0).toUpperCase() }}
+                                        </div>
+                                        <div>
+                                            <p class="font-semibold text-slate-900 text-xs">{{ booking.user?.name || 'Guest Client' }}</p>
+                                            <p class="text-[11px] text-slate-500">{{ booking.user?.email || 'N/A' }}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-6 font-medium text-slate-800 text-xs">
+                                    {{ booking.service?.name || 'Standard Service' }}
+                                    <span v-if="booking.service?.price" class="text-slate-400 font-normal">(${{ booking.service.price }})</span>
+                                </td>
+                                <td class="py-4 px-6 text-slate-600 text-xs">
+                                    {{ booking.staff?.name || 'Any Staff' }}
+                                </td>
+                                <td class="py-4 px-6 text-xs text-slate-600">
+                                    <span class="font-semibold text-slate-900">{{ booking.booking_date }}</span>
+                                    <span class="text-slate-400 ml-1">@ {{ booking.start_time?.substring(0, 5) }}</span>
+                                </td>
+                                <td class="py-4 px-6">
+                                    <span
+                                        :class="[
+                                            'inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border capitalize',
+                                            getStatusBadge(booking.status)
+                                        ]"
+                                    >
+                                        {{ booking.status }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty State -->
+                <div v-else class="text-center py-16 px-6">
+                    <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-sm font-bold text-slate-900">No bookings yet</h3>
+                    <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                        Share your public booking URL with your clients to start scheduling appointments.
+                    </p>
+                    <div class="mt-4">
+                        <button
+                            @click="copyLink"
+                            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-brand-600 text-white hover:bg-brand-700 shadow-sm transition-all"
+                        >
+                            <span>Copy Booking Link</span>
+                        </button>
+                    </div>
                 </div>
             </div>
+
         </div>
     </AuthenticatedLayout>
 </template>
-
-<style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap');
-
-:deep(body),
-:deep(h1),
-:deep(h2),
-:deep(h3),
-:deep(h4),
-:deep(span),
-:deep(p),
-:deep(button),
-:deep(a) {
-    font-family: 'Space Grotesk', sans-serif !important;
-    -webkit-font-smoothing: antialiased;
-}
-
-.no-scrollbar::-webkit-scrollbar {
-    display: none;
-}
-
-.no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-}
-
-.shadow-inner {
-    box-shadow: inset 0 4px 12px 0 rgba(0, 0, 0, 0.08);
-}
-
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(40px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
-}
-
-.animate-slideUp {
-    animation: slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.animate-fadeIn {
-    animation: fadeIn 1.5s ease-out forwards;
-}
-</style>

@@ -1,13 +1,4 @@
 <script setup>
-/**
- * Sovereign Intelligence Hub v4.3.0-PRO
- * 
- * DESIGN PHILOSOPHY:
- * 1. Macro-Financial Analytics: Integrated via Global Yield Line Chart.
- * 2. Infrastructure Integrity: Real-time system health telemetry pods.
- * 3. Entity Management: Verified Node Ledger for administrative oversight.
- */
-
 import SovereignLayout from '@/Layouts/SovereignLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
@@ -17,218 +8,319 @@ import { Chart as ChartJS, Title, Tooltip, Legend, LineElement, CategoryScale, L
 ChartJS.register(Title, Tooltip, Legend, LineElement, CategoryScale, LinearScale, PointElement, Filler);
 
 const props = defineProps({
-    stats: Object,
-    chartData: Object,
-    recentEntities: Array // FIXED: Matched with Controller variable name
+    stats: {
+        type: Object,
+        default: () => ({})
+    },
+    chartData: {
+        type: Object,
+        default: () => ({ labels: [], revenue: [] })
+    },
+    recentEntities: {
+        type: Array,
+        default: () => []
+    }
 });
 
-// Chart: Platform Revenue Trajectory (Indigo Signal)
 const yieldChart = computed(() => ({
     labels: props.chartData?.labels || [],
     datasets: [{
-        label: 'Global Yield',
-        data: props.chartData?.revenue || [], // FIXED: Matched with Controller data key
+        label: 'Gross Platform Volume',
+        data: props.chartData?.revenue || [],
         borderColor: '#4f46e5',
-        backgroundColor: 'rgba(79, 70, 229, 0.05)',
+        backgroundColor: 'rgba(79, 70, 229, 0.08)',
         fill: true,
-        tension: 0.4,
-        borderWidth: 4,
-        pointRadius: 0
+        tension: 0.35,
+        borderWidth: 3,
+        pointBackgroundColor: '#4f46e5',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6,
     }]
 }));
 
 const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
+    plugins: {
+        legend: { display: false },
+        tooltip: {
+            backgroundColor: '#0f172a',
+            titleColor: '#ffffff',
+            bodyColor: '#e2e8f0',
+            padding: 10,
+            cornerRadius: 10,
+            callbacks: {
+                label: (context) => ` Volume: $${Number(context.raw).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+            }
+        }
+    },
     scales: {
-        y: { display: false },
+        y: {
+            grid: { color: 'rgba(226, 232, 240, 0.6)' },
+            ticks: {
+                color: '#64748b',
+                font: { size: 11 },
+                callback: (val) => `$${val}`
+            }
+        },
         x: {
             grid: { display: false },
-            ticks: { font: { weight: 'bold', size: 10 }, color: '#94a3b8' }
+            ticks: {
+                color: '#64748b',
+                font: { size: 11 }
+            }
         }
     }
 };
 </script>
 
 <template>
-
-    <Head title="Sovereign Hub | Global Management" />
+    <Head title="Sovereign Control Oversight — SmartBooking" />
 
     <SovereignLayout>
-        <!-- REMOVED: max-w-7xl and mx-auto to allow Layout's internal container to manage spacing -->
-        <div class="space-y-16 animate-fadeIn">
-
-            <!-- EDITORIAL OVERLORD HEADER -->
-            <div class="flex flex-col xl:flex-row xl:items-end justify-between gap-12">
-                <div class="space-y-6">
-                    <div
-                        class="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 border border-indigo-100 rounded-full shadow-sm">
-                        <span class="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></span>
-                        <span class="text-[9px] font-black uppercase tracking-[0.4em] text-indigo-600">Global Grid
-                            Oversight protocol v4.2.0</span>
+        <div class="space-y-8 max-w-7xl mx-auto pb-16">
+            <!-- Header -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                            Root Administrator
+                        </span>
                     </div>
-                    <h1 class="text-7xl lg:text-9xl font-black tracking-tighter leading-[0.8] text-[#09090B] uppercase">
-                        Master <br /> <span class="text-indigo-600">Oversight.</span>
+                    <h1 class="text-2xl sm:text-3xl font-display font-extrabold text-slate-900 tracking-tight">
+                        Global Platform Oversight
                     </h1>
+                    <p class="text-sm text-slate-500 mt-1">
+                        High-altitude telemetry across all business workspaces, platform gross volumes, and system node health.
+                    </p>
                 </div>
 
-                <!-- PLATFORM KPI DOCK -->
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-4 w-full xl:w-auto">
-                    <div class="bg-[#09090B] p-8 rounded-[2.5rem] text-white shadow-2xl border border-white/5">
-                        <p class="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] mb-4">Total Revenue
-                        </p>
-                        <h3 class="text-3xl font-black tracking-tighter">${{ stats?.revenue || '0.00' }}</h3>
+                <div class="flex items-center gap-3">
+                    <Link
+                        :href="route('superadmin.entities.index')"
+                        class="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-brand-600 text-white text-xs font-semibold shadow-xs transition-all flex items-center gap-2"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                        <span>Manage Workspaces</span>
+                    </Link>
+                </div>
+            </div>
+
+            <!-- KPI Metric Cards (4 Grid) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Total Gross Revenue -->
+                <div class="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Volume</span>
+                        <div class="text-2xl font-display font-bold text-slate-900 mt-1">${{ stats.revenue || '0.00' }}</div>
+                        <span class="text-[11px] text-emerald-600 font-medium">Estimated MRR: ${{ stats.mrr || '0.00' }}</span>
                     </div>
-                    <div
-                        class="bg-white border border-slate-200/60 p-8 rounded-[2.5rem] shadow-xl border-t-[10px] border-t-indigo-600">
-                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] mb-4">Node Count</p>
-                        <h3 class="text-3xl font-black text-[#09090B] tracking-tighter">{{ stats?.businesses?.total || 0
-                        }}</h3>
+                    <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                </div>
+
+                <!-- Total Workspaces -->
+                <div class="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Workspaces</span>
+                        <div class="text-2xl font-display font-bold text-slate-900 mt-1">{{ stats.businesses?.total || 0 }}</div>
+                        <span class="text-[11px] text-brand-600 font-medium">{{ stats.businesses?.active || 0 }} Active / {{ stats.businesses?.suspended || 0 }} Suspended</span>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                    </div>
+                </div>
+
+                <!-- Registered Users -->
+                <div class="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Platform Accounts</span>
+                        <div class="text-2xl font-display font-bold text-slate-900 mt-1">{{ stats.users || 0 }}</div>
+                        <span class="text-[11px] text-slate-500 font-medium">Owners & Clients combined</span>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                    </div>
+                </div>
+
+                <!-- Health Status -->
+                <div class="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Node Cluster</span>
+                        <div class="text-2xl font-display font-bold text-emerald-600 mt-1">100% Nominal</div>
+                        <span class="text-[11px] text-slate-500 font-medium">Database & Queues healthy</span>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
                     </div>
                 </div>
             </div>
 
-            <!-- ANALYTICS MATRIX -->
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                <!-- Global Yield Chart -->
-                <div class="lg:col-span-8 bg-white border border-slate-200/60 rounded-[4rem] p-12 shadow-2xl">
-                    <div class="flex justify-between items-center mb-12">
-                        <h3 class="text-2xl font-black text-[#09090B] tracking-tighter uppercase">Financial Trajectory
-                        </h3>
-                        <span
-                            class="text-[9px] font-black text-emerald-500 uppercase tracking-[0.4em] bg-emerald-50 px-4 py-2 rounded-full border border-emerald-100">Live
-                            Sync</span>
+            <!-- Analytics & Telemetry Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                <!-- Revenue Trajectory Chart (8 cols) -->
+                <div class="lg:col-span-8 bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-7 shadow-xs">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h2 class="font-display font-bold text-lg text-slate-900">Platform Volume Trajectory</h2>
+                            <p class="text-xs text-slate-500 mt-0.5">30-day cross-tenant gross volume aggregation</p>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            Live Stream
+                        </span>
                     </div>
-                    <div class="h-80">
+
+                    <div class="h-72 w-full">
                         <Line :data="yieldChart" :options="chartOptions" />
                     </div>
                 </div>
 
-                <!-- Platform Integrity Readout -->
-                <div class="lg:col-span-4 space-y-8">
-                    <div
-                        class="bg-[#09090B] rounded-[3.5rem] p-12 text-white shadow-2xl relative overflow-hidden border border-white/5 group">
-                        <div
-                            class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,#4f46e522_0%,transparent_70%)]">
-                        </div>
-                        <div class="relative z-10 space-y-10">
-                            <p class="text-[10px] font-black text-indigo-400 uppercase tracking-[0.5em]">Integrity Check
-                            </p>
-                            <div class="space-y-8">
-                                <div v-for="node in ['Storage Cluster', 'Auth Sentinel', 'Email Relay']" :key="node"
-                                    class="flex justify-between items-center">
-                                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-300">{{ node
-                                    }}</span>
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]">
-                                        </div>
-                                        <span
-                                            class="text-[8px] font-black text-slate-500 uppercase tracking-widest">Nominal</span>
-                                    </div>
+                <!-- Platform Node Telemetry (4 cols) -->
+                <div class="lg:col-span-4 space-y-4">
+                    <div class="bg-slate-950 text-white border border-slate-900 rounded-2xl p-6 shadow-xs relative overflow-hidden">
+                        <div class="absolute -top-12 -right-12 w-48 h-48 bg-brand-500/20 rounded-full blur-2xl pointer-events-none"></div>
+
+                        <div class="relative z-10 space-y-5">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold uppercase tracking-wider text-amber-400">Infrastructure Sentinel</span>
+                                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            </div>
+
+                            <div class="space-y-3.5">
+                                <div
+                                    v-for="service in [
+                                        { name: 'Multi-Tenant Isolation Scope', status: 'Enforced', color: 'emerald' },
+                                        { name: 'SQLite Storage Driver', status: 'Operational', color: 'emerald' },
+                                        { name: 'Queue Worker Worker-01', status: 'Active (Daemon)', color: 'emerald' },
+                                        { name: 'Inertia v2 Protocol', status: 'Nominal', color: 'emerald' }
+                                    ]"
+                                    :key="service.name"
+                                    class="flex items-center justify-between text-xs pb-2 border-b border-white/5 last:border-b-0"
+                                >
+                                    <span class="text-slate-300">{{ service.name }}</span>
+                                    <span class="font-semibold text-emerald-400">{{ service.status }}</span>
                                 </div>
                             </div>
+
+                            <div class="pt-2">
+                                <Link
+                                    :href="route('superadmin.config')"
+                                    class="w-full py-2 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition-all block text-center"
+                                >
+                                    View Full Configuration
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Navigation Card -->
+                    <div class="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs space-y-3">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-400 block">Sovereign Tools</span>
+                        <div class="grid grid-cols-2 gap-2">
+                            <Link
+                                :href="route('superadmin.financials')"
+                                class="p-3 rounded-xl bg-slate-50 hover:bg-brand-50 border border-slate-100 text-xs font-semibold text-slate-700 hover:text-brand-700 transition-colors"
+                            >
+                                💰 Financial Yield
+                            </Link>
+                            <Link
+                                :href="route('superadmin.audit')"
+                                class="p-3 rounded-xl bg-slate-50 hover:bg-brand-50 border border-slate-100 text-xs font-semibold text-slate-700 hover:text-brand-700 transition-colors"
+                            >
+                                📜 Audit Ledger
+                            </Link>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- THE ENTITY LEDGER (Central Business Manager) -->
-            <div
-                class="bg-white rounded-[5rem] border border-slate-200/60 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.12)] overflow-hidden">
-                <div
-                    class="px-14 py-14 border-b border-slate-100 flex flex-col md:flex-row md:items-end justify-between gap-10 bg-slate-50/40">
+            <!-- Recent Business Entities Ledger Table -->
+            <div class="bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden">
+                <div class="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between">
                     <div>
-                        <h3 class="text-4xl font-black text-[#09090B] tracking-tighter uppercase leading-none">Entity
-                            Ledger</h3>
-                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-4 italic">
-                            Platform-wide node oversight and administrative control</p>
+                        <h2 class="font-display font-bold text-lg text-slate-900">Recent Business Workspaces</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Latest registered business nodes on the platform</p>
                     </div>
+                    <Link
+                        :href="route('superadmin.entities.index')"
+                        class="text-xs font-semibold text-brand-600 hover:text-brand-700"
+                    >
+                        View all workspaces →
+                    </Link>
                 </div>
+
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left">
-                        <tbody class="divide-y divide-slate-50">
-                            <!-- FIXED: Corrected variable to recentEntities -->
-                            <tr v-for="entity in recentEntities" :key="entity.id"
-                                class="group hover:bg-indigo-50/30 transition-colors">
-                                <td class="px-14 py-14">
-                                    <div class="flex items-center gap-10">
-                                        <div
-                                            class="w-20 h-16 rounded-[2rem] bg-[#09090B] flex items-center justify-center font-black text-white text-2xl shadow-2xl group-hover:bg-indigo-600 transition-all duration-700">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-50/80 text-slate-400 uppercase font-semibold border-b border-slate-100">
+                            <tr>
+                                <th class="px-6 py-3.5">Business Workspace</th>
+                                <th class="px-6 py-3.5">Owner / Principal</th>
+                                <th class="px-6 py-3.5">Total Bookings</th>
+                                <th class="px-6 py-3.5">Status</th>
+                                <th class="px-6 py-3.5 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-slate-700">
+                            <tr
+                                v-for="entity in recentEntities"
+                                :key="entity.id"
+                                class="hover:bg-slate-50/60 transition-colors"
+                            >
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-600 text-white flex items-center justify-center font-display font-bold text-sm">
                                             {{ entity.name?.charAt(0).toUpperCase() }}
                                         </div>
                                         <div>
-                                            <p
-                                                class="text-3xl font-black text-[#09090B] tracking-tighter leading-none uppercase">
-                                                {{ entity.name }}</p>
-                                            <p
-                                                class="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-3">
-                                                Principal: {{ entity.owner }}</p>
+                                            <div class="font-bold text-slate-900">{{ entity.name }}</div>
+                                            <div class="text-[11px] text-slate-400 font-mono">/b/{{ entity.slug }}</div>
                                         </div>
                                     </div>
                                 </td>
-                                <td class="px-14 py-14">
-                                    <div class="flex flex-col gap-2">
-                                        <span
-                                            class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Node
-                                            Status</span>
-                                        <span
-                                            class="px-4 py-2 rounded-xl bg-emerald-50 text-emerald-600 text-[9px] font-black uppercase tracking-[0.2em] border border-emerald-100 w-fit">Verified</span>
+                                <td class="px-6 py-4">
+                                    <span class="font-medium text-slate-900">{{ entity.owner }}</span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="font-bold text-slate-900">{{ entity.load }}</span>
+                                    <span class="text-slate-400 text-[11px] ml-1">sessions</span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span
+                                        :class="[
+                                            'px-2.5 py-0.5 rounded-full text-[11px] font-semibold border',
+                                            entity.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
+                                        ]"
+                                    >
+                                        {{ entity.status }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <Link
+                                            :href="`/b/${entity.slug}`"
+                                            target="_blank"
+                                            class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold transition-all inline-flex items-center gap-1"
+                                        >
+                                            <span>Visit Portal</span>
+                                            <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                        </Link>
                                     </div>
                                 </td>
-                                <td class="px-14 py-14 text-right">
-                                    <div class="flex justify-end gap-3">
-                                        <Link :href="`/b/${entity.slug}`" target="_blank"
-                                            class="px-8 py-4 bg-[#09090B] text-white text-[9px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-600 transition-all">
-                                            Audit Node</Link>
-                                        <button
-                                            class="px-8 py-4 bg-rose-50 text-rose-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all">Suspend
-                                            Node</button>
-                                    </div>
+                            </tr>
+
+                            <tr v-if="!recentEntities || recentEntities.length === 0">
+                                <td colspan="5" class="px-6 py-12 text-center text-slate-400">
+                                    No business workspaces registered yet.
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
-                <!-- FIXED: Added fallback for empty state -->
-                <div v-if="!recentEntities?.length" class="p-40 text-center">
-                    <p class="text-xs font-black text-slate-300 uppercase tracking-[0.8em]">Zero Entities Currently
-                        Indexed</p>
-                </div>
             </div>
         </div>
     </SovereignLayout>
 </template>
-
-<style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap');
-
-:deep(body),
-:deep(h1),
-:deep(h2),
-:deep(h3),
-:deep(h4),
-:deep(span),
-:deep(p),
-:deep(button),
-:deep(a) {
-    font-family: 'Space Grotesk', sans-serif !important;
-    -webkit-font-smoothing: antialiased;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.animate-fadeIn {
-    animation: fadeIn 0.8s ease-out forwards;
-}
-</style>

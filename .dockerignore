@@ -1,0 +1,13 @@
+node_modules
+vendor
+.git
+.github
+.env
+.phpunit.result.cache
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/logs/*
+tests
+Dockerfile
+.dockerignore
