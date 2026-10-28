@@ -91,7 +91,9 @@ RUN mkdir -p storage/framework/sessions \
     && chown -R www-data:www-data storage bootstrap/cache database \
     && chmod -R 775 storage bootstrap/cache database
 
-# Expose HTTP port
-EXPOSE 80
+# Expose HTTP ports (standard 80 and Render default 10000)
+EXPOSE 80 10000
 
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=80"]
+# Container Startup: Self-healing APP_KEY, auto-migration, and dynamic port binding
+CMD ["sh", "-c", "if [ -z \"$APP_KEY\" ]; then php artisan key:generate --force; fi && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-80}"]
+
