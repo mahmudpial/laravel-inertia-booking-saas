@@ -3,19 +3,22 @@
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# Stage 1: Build Frontend Assets (Vite + Vue 3)
+# Stage 1: Frontend Assets (Vite + Vue 3)
 # ------------------------------------------------------------------------------
-FROM node:20-alpine AS node_builder
+FROM node:22-bookworm-slim AS node_builder
 
 WORKDIR /app
 
-# Copy package definitions first for layer caching
-COPY package*.json ./
-RUN npm ci --prefer-offline --no-audit
-
-# Copy source code and build Vite assets
+# Copy application source code (including pre-built assets if present)
 COPY . .
-RUN npm run build
+
+# If assets are already pre-built, verify and skip npm build; otherwise install and build with Vite
+RUN if [ -f public/build/manifest.json ]; then \
+        echo "--> Frontend assets already built, skipping build step."; \
+    else \
+        echo "--> Building frontend assets with Vite..."; \
+        npm ci --no-audit && npm run build; \
+    fi
 
 # ------------------------------------------------------------------------------
 # Stage 2: Production PHP Runtime (PHP 8.3 + Nginx / PHP-FPM)
