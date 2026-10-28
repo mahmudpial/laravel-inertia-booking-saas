@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Artisan;
 use Inertia\Inertia;
 use Illuminate\Foundation\Application;
 
@@ -54,6 +55,15 @@ Route::get('/api/available-slots', [BookingController::class, 'getAvailableSlots
  * Secure Transmission: Authenticated Booking Packet Dispatch
  */
 Route::post('/booking/store', [BookingController::class, 'store'])->name('booking.store')->middleware('auth');
+
+/**
+ * 1-Click Database Setup & Demo Seeding (No Shell / CLI Required)
+ */
+Route::get('/setup-demo', function () {
+    Artisan::call('migrate', ['--force' => true]);
+    Artisan::call('db:seed', ['--force' => true]);
+    return redirect()->route('login')->with('status', 'Database migrated and demo accounts seeded successfully!');
+})->name('setup.demo');
 
 
 /*

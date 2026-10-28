@@ -94,6 +94,6 @@ RUN mkdir -p storage/framework/sessions \
 # Expose HTTP ports (standard 80 and Render default 10000)
 EXPOSE 80 10000
 
-# Container Startup: Self-healing APP_KEY, auto-migration, and dynamic port binding
-CMD ["sh", "-c", "if [ -z \"$APP_KEY\" ]; then php artisan key:generate --force; fi && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-80}"]
+# Container Startup: Self-healing APP_KEY, auto-migration, auto-seed, and dynamic port binding
+CMD ["sh", "-c", "if [ -z \"$APP_KEY\" ]; then php artisan key:generate --force; fi && php artisan migrate --force && php artisan db:seed --force && php artisan serve --host=0.0.0.0 --port=${PORT:-80}"]
 

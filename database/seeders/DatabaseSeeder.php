@@ -23,6 +23,11 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Don't duplicate seed data if already seeded
+        if (User::where('email', 'admin@example.com')->exists()) {
+            return;
+        }
+
         // 1. Super Admin
         $superAdmin = User::create([
             'name' => 'Platform Super Admin',
