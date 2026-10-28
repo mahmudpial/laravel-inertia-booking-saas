@@ -21,9 +21,9 @@ RUN if [ -f public/build/manifest.json ]; then \
     fi
 
 # ------------------------------------------------------------------------------
-# Stage 2: Production PHP Runtime (PHP 8.3 + Nginx / PHP-FPM)
+# Stage 2: Production PHP Runtime (PHP 8.4 + Nginx / PHP-FPM)
 # ------------------------------------------------------------------------------
-FROM php:8.3-fpm-alpine
+FROM php:8.4-fpm-alpine
 
 # Set environment
 ENV COMPOSER_ALLOW_SUPERUSER=1 \
@@ -71,6 +71,7 @@ RUN composer install \
     --no-interaction \
     --no-scripts \
     --no-autoloader \
+    --ignore-platform-reqs \
     --prefer-dist
 
 # 3. Copy application codebase
@@ -80,7 +81,7 @@ COPY . .
 COPY --from=node_builder /app/public/build ./public/build
 
 # 5. Generate optimized autoloader and run Laravel package discovery
-RUN composer dump-autoload --optimize --no-dev --classmap-authoritative \
+RUN composer dump-autoload --optimize --no-dev --classmap-authoritative --ignore-platform-reqs \
     && php artisan package:discover --ansi
 
 # 6. Ensure required directories and SQLite file exist with proper permissions
