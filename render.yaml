@@ -4,6 +4,7 @@ services:
     runtime: docker
     plan: free
     region: oregon
+    autoDeploy: true
     dockerfilePath: ./Dockerfile
     healthCheckPath: /
     envVars:
